@@ -1,25 +1,17 @@
-import { StatusBar } from "expo-status-bar";
+import React from 'react';
 import {
-  Image,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  Touchable,
-  TouchableOpacity,
   View,
-} from "react-native";
-import tw from "twrnc";
-import { useFonts } from "expo-font";
-import AntDesign from "react-native-vector-icons/AntDesign";
-import Entypo from "react-native-vector-icons/Entypo";
-import Feather from "react-native-vector-icons/Feather";
-import IonIcons from "react-native-vector-icons/Ionicons";
-import { useEffect } from "react";
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
+import { useFonts } from 'expo-font';
+import tw from 'twrnc';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function BestServices() {
+const BestServices = () => {
   const [loaded, error] = useFonts({
     "Mont-Black": require("../assets/fonts/Montserrat-Black.ttf"),
     "Mont-BlackItalic": require("../assets/fonts/Montserrat-BlackItalic.ttf"),
@@ -41,120 +33,277 @@ export default function BestServices() {
     "Mont-ThinItalic": require("../assets/fonts/Montserrat-ThinItalic.ttf"),
   });
 
+  // Fake data for best services
+  const bestServices = [
+    {
+      id: 1,
+      title: "Servis veš mašine",
+      worker: "Marko Petrović",
+      rating: 4.9,
+      reviews: 156,
+      price: "od 2500 RSD",
+      image: "https://images.unsplash.com/photo-1631241470625-8c3cb167ef06?w=400&h=300&fit=crop",
+      category: "Aparati",
+      verified: true,
+      experience: "8 godina"
+    },
+    {
+      id: 2,
+      title: "Popravka rerna",
+      worker: "Ana Jovanović",
+      rating: 4.8,
+      reviews: 142,
+      price: "od 3000 RSD",
+      image: "https://images.unsplash.com/photo-1584269600519-112d071b35e6?w=400&h=300&fit=crop",
+      category: "Aparati",
+      verified: true,
+      experience: "5 godina"
+    },
+    {
+      id: 3,
+      title: "Elektro instalacija",
+      worker: "Stefan Nikolić",
+      rating: 4.9,
+      reviews: 203,
+      price: "od 4000 RSD",
+      image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop",
+      category: "Električar",
+      verified: true,
+      experience: "12 godina"
+    },
+    {
+      id: 4,
+      title: "Vodoinstalacija",
+      worker: "Mila Đorđević",
+      rating: 4.7,
+      reviews: 98,
+      price: "od 3500 RSD",
+      image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop",
+      category: "Vodoinstalater",
+      verified: false,
+      experience: "6 godina"
+    }
+  ];
+
+  const handleServicePress = (service) => {
+    // Handle service press - navigate to service details
+    console.log('Service pressed:', service.title);
+  };
+
+  const handleViewAll = () => {
+    // Navigate to all services screen
+    console.log('View all services');
+  };
+
   if (!loaded && !error) {
     return null;
   }
 
   return (
-    <View style={[tw`px-4`]}>
-      <View style={[tw`flex flex-row items-center justify-between`]}>
-        <Text style={[tw`text-xl max-w-2/3`, { fontFamily: "Mont-Bold" }]}>
-          Our Best Services
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={[styles.sectionTitle, { fontFamily: 'Mont-Bold' }]}>
+          Najbolje usluge
         </Text>
-        <TouchableOpacity style={[tw`flex flex-row gap-1 items-center`]}>
-          <Text
-            style={[tw`text-base text-blue-500`, { fontFamily: "Mont-Bold" }]}
-          >
-            View all
+        <TouchableOpacity onPress={handleViewAll}>
+          <Text style={[styles.viewAllText, { fontFamily: 'Mont-Medium' }]}>
+            Pogledaj sve
           </Text>
-          <Feather
-            name="chevrons-right"
-            size={18}
-            style={[tw`text-blue-500`]}
-          />
         </TouchableOpacity>
       </View>
-      <ScrollView
-        horizontal={true}
+
+      {/* Services Grid */}
+      <ScrollView 
+        horizontal 
         showsHorizontalScrollIndicator={false}
-        style={[tw`mt-4`]}
+        contentContainerStyle={styles.servicesContainer}
       >
-        <View style={[tw`flex-1 overflow-hidden`, { minWidth: 180 }]}>
-          <Image
-            source={require("../assets/img.webp")}
-            style={[tw`w-full h-28 rounded-xl`]}
-          />
-          <View style={[tw`pt-1`]}>
-            <Text
-              style={[
-                tw`text-base opacity-75`,
-                { fontFamily: "Mont-SemiBold" },
-              ]}
-            >
-              Bathroom Cleaning
-            </Text>
-            <Text
-              style={[tw`text-sm opacity-50`, { fontFamily: "Mont-SemiBold" }]}
-            >
-              Service at Home
-            </Text>
-            <View style={[tw`flex flex-row gap-1 mt-0.5`]}>
-              <Text
-                style={[
-                  tw`text-xs opacity-50`,
-                  { fontFamily: "Mont-SemiBold" },
-                ]}
-              >
-                Start at
-              </Text>
-              <Text
-                style={[
-                  tw`text-xs text-green-600 opacity-75`,
-                  { fontFamily: "Mont-SemiBold" },
-                ]}
-              >
-                1.500 RSD
+        {bestServices.map((service) => (
+          <TouchableOpacity
+            key={service.id}
+            style={styles.serviceCard}
+            onPress={() => handleServicePress(service)}
+            activeOpacity={0.9}
+          >
+            {/* Service Image */}
+            <Image
+              source={{ uri: service.image }}
+              style={styles.serviceImage}
+              resizeMode="cover"
+            />
+            
+            {/* Category Badge */}
+            <View style={styles.categoryBadge}>
+              <Text style={[styles.categoryText, { fontFamily: 'Mont-Medium' }]}>
+                {service.category}
               </Text>
             </View>
-          </View>
-        </View>
-        <View style={[tw`flex-1 overflow-hidden ml-3`, { minWidth: 180 }]}>
-          <Image
-            source={require("../assets/img.webp")}
-            style={[tw`w-full h-28 rounded-xl`]}
-          />
-          <View style={[tw`pt-1`]}>
-            <Text
-              style={[
-                tw`text-base opacity-75`,
-                { fontFamily: "Mont-SemiBold" },
-              ]}
-            >
-              Bathroom Cleaning
-            </Text>
-            <Text
-              style={[tw`text-sm opacity-50`, { fontFamily: "Mont-SemiBold" }]}
-            >
-              Service at Home
-            </Text>
-            <View style={[tw`flex flex-row gap-1 mt-0.5`]}>
-              <Text
-                style={[
-                  tw`text-xs opacity-50`,
-                  { fontFamily: "Mont-SemiBold" },
-                ]}
-              >
-                Start at
+
+            {/* Content */}
+            <View style={styles.serviceContent}>
+              <Text style={[styles.serviceTitle, { fontFamily: 'Mont-SemiBold' }]} numberOfLines={2}>
+                {service.title}
               </Text>
-              <Text
-                style={[
-                  tw`text-xs text-green-600 opacity-75`,
-                  { fontFamily: "Mont-SemiBold" },
-                ]}
-              >
-                1.500 RSD
-              </Text>
+              
+              {/* Worker Info */}
+              <View style={styles.workerInfo}>
+                <View style={styles.workerDetails}>
+                  <Text style={[styles.workerName, { fontFamily: 'Mont-Medium' }]}>
+                    {service.worker}
+                  </Text>
+                  <View style={styles.workerMeta}>
+                    <Text style={[styles.experienceText, { fontFamily: 'Mont-Regular' }]}>
+                      {service.experience}
+                    </Text>
+                    {service.verified && (
+                      <View style={styles.verifiedBadge}>
+                        <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              {/* Rating and Price */}
+              <View style={styles.serviceMeta}>
+                <View style={styles.ratingContainer}>
+                  <Ionicons name="star" size={16} color="#F59E0B" />
+                  <Text style={[styles.ratingText, { fontFamily: 'Mont-Medium' }]}>
+                    {service.rating}
+                  </Text>
+                  <Text style={[styles.reviewsText, { fontFamily: 'Mont-Regular' }]}>
+                    ({service.reviews})
+                  </Text>
+                </View>
+                
+                <Text style={[styles.priceText, { fontFamily: 'Mont-Bold' }]}>
+                  {service.price}
+                </Text>
+              </View>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
+    marginBottom: 24,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    color: '#1F2937',
+    fontWeight: '600',
+  },
+  viewAllText: {
+    fontSize: 15,
+    color: '#4ade80',
+    fontWeight: '600',
+  },
+  servicesContainer: {
+    paddingHorizontal: 20,
+  },
+  serviceCard: {
+    width: 300,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    marginRight: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  serviceImage: {
+    width: '100%',
+    height: 160,
+  },
+  categoryBadge: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: 'rgba(74, 222, 128, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  categoryText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  serviceContent: {
+    padding: 20,
+  },
+  serviceTitle: {
+    fontSize: 18,
+    color: '#1F2937',
+    marginBottom: 16,
+    lineHeight: 24,
+  },
+  workerInfo: {
+    marginBottom: 16,
+  },
+  workerDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  workerName: {
+    fontSize: 14,
+    color: '#374151',
     flex: 1,
-    backgroundColor: "#fff",
+  },
+  workerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  experienceText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginRight: 4,
+  },
+  verifiedBadge: {
+    marginLeft: 4,
+  },
+  serviceMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    fontSize: 14,
+    color: '#374151',
+    marginLeft: 4,
+    marginRight: 4,
+  },
+  reviewsText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  priceText: {
+    fontSize: 17,
+    color: '#4ade80',
+    fontWeight: '600',
   },
 });
+
+export default BestServices;

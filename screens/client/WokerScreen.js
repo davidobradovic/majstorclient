@@ -1,27 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  SafeAreaView,
+  StyleSheet,
   ScrollView,
-  StatusBar,
+  TouchableOpacity,
   Image,
-  Modal,
-  TextInput,
-} from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
-import MaterialIcons from "react-native-vector-icons/MaterialIcons";
-import FontAwesome from "react-native-vector-icons/FontAwesome";
-import twrnc from "twrnc";
-import MapView, { Marker } from "react-native-maps";
-import CalendarPicker from "react-native-calendar-picker";
-import { useNavigation } from "@react-navigation/native";
-import { useFonts } from "expo-font";
-import Divider from "../../components/Divider";
+  SafeAreaView,
+  StatusBar,
+  FlatList,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../context/AuthContext';
+import ApiService from '../../services/ApiService';
 
-const WorkerScreen = () => {
-  const [loaded, error] = useFonts({
+const WokerScreen = ({ navigation, route }) => {
+  const { user, apiLoading, error: apiError } = useAuth();
+  const [worker, setWorker] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [loaded, fontError] = useFonts({
     "Mont-Black": require("../../assets/fonts/Montserrat-Black.ttf"),
     "Mont-BlackItalic": require("../../assets/fonts/Montserrat-BlackItalic.ttf"),
     "Mont-Bold": require("../../assets/fonts/Montserrat-Bold.ttf"),
@@ -42,950 +45,775 @@ const WorkerScreen = () => {
     "Mont-ThinItalic": require("../../assets/fonts/Montserrat-ThinItalic.ttf"),
   });
 
-  const navigation = useNavigation();
-
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedTime, setSelectedTime] = useState(null);
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [openMap, setOpenMap] = useState(false);
-  const [showAppointment, setShowAppointment] = useState(false);
-  const [paymentView, setPaymentView] = useState(false);
-
-
-
-
-  const [majstorLokacija, setMajstorLokacija] = useState({
-    latitude: 44.8125,
-    longitude: 20.4612, // Beograd koordinate
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  });
-
-  // Generišemo dinamičke datume - danas i 30 dana unapred
-  const [datumi, setDatumi] = useState([]);
-
+  // Load worker data
   useEffect(() => {
-    const danas = new Date();
-    const noviDatumi = [];
+    const loadWorkerData = async () => {
+      try {
+        setLoading(true);
+        const workerId = route.params?.workerId;
+        
+        if (workerId) {
+          const response = await ApiService.getWorkerById(workerId);
+          if (response.success) {
+            setWorker(response.data);
+          } else {
+            setError(response.message);
+          }
+        } else {
+          setError('Worker ID not provided');
+        }
+      } catch (error) {
+        console.error('Error loading worker data:', error);
+        setError('Failed to load worker data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    for (let i = -2; i < 28; i++) {
-      const datum = new Date();
-      datum.setDate(danas.getDate() + i);
+    loadWorkerData();
+  }, [route.params?.workerId]);
 
-      const dani = ["Ned", "Pon", "Uto", "Sre", "Čet", "Pet", "Sub"];
-      const dan = dani[datum.getDay()];
-      const broj = datum.getDate();
-      const mesec = datum.getMonth() + 1;
+  const [activeTab, setActiveTab] = useState('about');
+  const [selectedService, setSelectedService] = useState(null);
 
-      noviDatumi.push({
-        datum: datum,
-        dan: dan,
-        broj: broj,
-        mesec: mesec,
-        disabled: i < 0, // Prošli datumi su onemogućeni
-        selected: i === 1, // Sutra je automatski odabran
-      });
-    }
-
-    setDatumi(noviDatumi);
-    setSelectedDate(noviDatumi.find((d) => d.selected).datum);
-  }, []);
-
-  const jutarnjiTermini = [
-    { vreme: "08:00" },
-    { vreme: "09:30" },
-    { vreme: "10:45" },
-    { vreme: "11:30" },
-  ];
-
-  const poslepodnevniTermini = [
-    { vreme: "13:00" },
-    { vreme: "14:30" },
-    { vreme: "16:00" },
-    { vreme: "17:30" },
-    { vreme: "19:00" },
-  ];
-
-  const vecernjiTermini = [{ vreme: "20:00" }, { vreme: "21:30" }];
-
-  const odaberiDatum = (index) => {
-    const noviDatumi = datumi.map((d, i) => ({
-      ...d,
-      selected: i === index,
-    }));
-
-    setDatumi(noviDatumi);
-    setSelectedDate(noviDatumi[index].datum);
+  const handleBackPress = () => {
+    navigation.goBack();
   };
 
-  const odaberiVreme = (vreme) => {
-    setSelectedTime(vreme);
+  const handleBookNow = () => {
+    Alert.alert(
+      'Rezervacija',
+      'Da li želite da rezervišete uslugu kod ovog majstora?',
+      [
+        { text: 'Otkaži', style: 'cancel' },
+        { 
+          text: 'Rezerviši', 
+          onPress: () => {
+            Alert.alert('Uspešno', 'Vaša rezervacija je uspešno kreirana!');
+          }
+        }
+      ]
+    );
   };
 
-  const odaberiKalendarskiDatum = (date) => {
-    // Provera da li je date već Date objekat ili ima metodu toDate()
-    const selectedDateObj =
-      date instanceof Date
-        ? date
-        : date.toDate
-        ? date.toDate()
-        : new Date(date);
-
-    setSelectedDate(selectedDateObj);
-    setShowCalendar(false);
-
-    // Ažuriramo i selektovanu poziciju u horizontalnom prikazu ako datum postoji tamo
-    const noviDatumi = datumi.map((d) => ({
-      ...d,
-      selected: d.datum.toDateString() === selectedDateObj.toDateString(),
-    }));
-
-    setDatumi(noviDatumi);
+  const handleMessage = () => {
+    navigation.navigate('Chat', { workerId: worker.id, workerName: worker.name });
   };
 
-  const formatirajDatum = (datum) => {
-    if (!datum) return "";
-
-    const dan = datum.getDate();
-    const mesec = datum.getMonth() + 1;
-    const godina = datum.getFullYear();
-
-    return `${dan}.${mesec}.${godina}.`;
+  const handleCall = () => {
+    Alert.alert('Poziv', 'Poziv će biti uspostavljen uskoro...');
   };
 
-  const renderTermin = (vreme, isSelected = false) => (
-    <TouchableOpacity
-      key={vreme}
-      style={twrnc`h-10 px-4 rounded-full flex items-center justify-center ${
-        isSelected
-          ? "bg-blue-500 border-blue-500"
-          : "bg-white border border-gray-200"
-      }`}
-      onPress={() => odaberiVreme(vreme)}
-    >
-      <Text
-        style={twrnc` ${
-          selectedTime === vreme ? "text-white" : "text-black"
-        } font-medium`}
-      >
-        {vreme}
-      </Text>
-    </TouchableOpacity>
-  );
+  const handleVideoCall = () => {
+    Alert.alert('Video poziv', 'Video poziv će biti uspostavljen uskoro...');
+  };
 
-  const renderDan = (item, index) => (
-    <TouchableOpacity
-      key={index}
-      style={twrnc`w-16 h-20 rounded-xl mx-1 flex items-center justify-center ${
-        item.selected
-          ? "bg-blue-500"
-          : item.disabled
-          ? "bg-gray-100"
-          : "bg-white border border-gray-200"
-      }`}
-      onPress={() => !item.disabled && odaberiDatum(index)}
-      disabled={item.disabled}
-    >
-      <Text
-        style={[
-          twrnc` text-xs ${
-            item.disabled
-              ? "text-gray-400"
-              : item.selected
-              ? "text-blue-100"
-              : "text-gray-500"
-          }`,
-          { fontFamily: "Mont-Regular" },
-        ]}
-      >
-        {item.dan}
-      </Text>
-      <Text
-        style={[
-          twrnc` text-lg font-bold ${
-            item.disabled
-              ? "text-gray-400"
-              : item.selected
-              ? "text-white"
-              : "text-black"
-          }`,
-          { fontFamily: "Mont-Regular" },
-        ]}
-      >
-        {item.broj}
-      </Text>
-      <Text
-        style={[
-          twrnc` text-xs ${
-            item.disabled
-              ? "text-gray-400"
-              : item.selected
-              ? "text-blue-100"
-              : "text-gray-500"
-          }`,
-          { fontFamily: "Mont-Regular" },
-        ]}
-      >
-        {item.mesec}. mesec
-      </Text>
-    </TouchableOpacity>
-  );
-
-  return (
-    <SafeAreaView style={twrnc`flex-1 bg-white`}>
-      <StatusBar barStyle="dark-content" />
-
-      {/* Header */}
-      <View style={twrnc`px-4 pt-2 pb-4 bg-white shadow`}>
-        <View style={twrnc`flex-row items-center`}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={twrnc`w-10 h-10 rounded-full bg-gray-100 items-center justify-center`}
-          >
-            <Icon name="chevron-back" size={24} color="#000" />
-          </TouchableOpacity>
-          <Text
-            style={[
-              twrnc` text-xl font-bold ml-4`,
-              { fontFamily: "Mont-SemiBold" },
-            ]}
-          >
-            Zakaži majstora
+  const renderReview = ({ item }) => (
+    <View style={styles.reviewCard}>
+      <View style={styles.reviewHeader}>
+        <View style={styles.reviewerInfo}>
+          <Text style={[styles.reviewerName, { fontFamily: 'Mont-SemiBold' }]}>
+            {item.user}
+          </Text>
+          <Text style={[styles.reviewService, { fontFamily: 'Mont-Regular' }]}>
+            {item.service}
+          </Text>
+        </View>
+        <View style={styles.reviewRating}>
+          <Ionicons name="star" size={16} color="#F59E0B" />
+          <Text style={[styles.ratingText, { fontFamily: 'Mont-Medium' }]}>
+            {item.rating}
           </Text>
         </View>
       </View>
+      
+      <Text style={[styles.reviewComment, { fontFamily: 'Mont-Regular' }]}>
+        {item.comment}
+      </Text>
+      
+      <Text style={[styles.reviewDate, { fontFamily: 'Mont-Regular' }]}>
+        {item.date}
+      </Text>
+    </View>
+  );
 
-      <ScrollView style={twrnc`flex-1`}>
-        {/* Banner */}
-        <View style={twrnc`bg-white mb-2 p-4`}>
-          <View style={twrnc`flex-row`}>
-            <Image
-              source={{ uri: "https://randomuser.me/api/portraits/men/32.jpg" }}
-              style={twrnc`w-20 h-20 rounded-full`}
-            />
-            <View style={twrnc`ml-4 flex-1`}>
-              <Text
-                style={[twrnc` text-xl font-bold`, { fontFamily: "Mont-Bold" }]}
-              >
-                Milan Petrović
+  if (!loaded && !fontError) {
+    return null;
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#4ade80" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4ade80" />
+          <Text style={[styles.loadingText, { fontFamily: 'Mont-Regular' }]}>
+            Učitavanje podataka o radniku...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show error state
+  if (error || !worker) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#4ade80" />
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+          <Text style={[styles.errorText, { fontFamily: 'Mont-Medium' }]}>
+            {error || 'Radnik nije pronađen'}
+          </Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={[styles.retryText, { fontFamily: 'Mont-Medium' }]}>
+              Nazad
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#4ade80" />
+      
+      {/* Header with worker image */}
+      <View style={styles.header}>
+        <Image 
+          source={{ 
+            uri: worker.avatar || worker.profileImage || 
+                 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face'
+          }} 
+          style={styles.headerImage} 
+        />
+        <View style={styles.headerOverlay} />
+        
+        {/* Back button */}
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
+        
+        {/* Action buttons */}
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleMessage} style={styles.actionButton}>
+            <Ionicons name="chatbubble-outline" size={20} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleCall} style={styles.actionButton}>
+            <Ionicons name="call-outline" size={20} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleVideoCall} style={styles.actionButton}>
+            <Ionicons name="videocam-outline" size={20} color="white" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Worker info card */}
+      <View style={styles.workerInfoCard}>
+        <View style={styles.workerHeader}>
+          <View style={styles.workerBasicInfo}>
+            <Text style={[styles.workerName, { fontFamily: 'Mont-Bold' }]}>
+              {worker.firstName ? `${worker.firstName} ${worker.lastName}` : worker.name || 'Nepoznati radnik'}
+            </Text>
+            <View style={styles.workerMeta}>
+              <Text style={[styles.workerCategory, { fontFamily: 'Mont-Medium' }]}>
+                {worker.category?.name || worker.category || 'Usluga'}
               </Text>
-              <View style={twrnc`flex-row items-center`}>
-                <Icon name="star" size={16} color="#FFD700" />
-                <Text style={[twrnc` ml-1`, { fontFamily: "Mont-Regular" }]}>
-                  4.8 (142 ocena)
-                </Text>
-              </View>
-              <Text
-                style={[
-                  twrnc` text-gray-500 mt-1`,
-                  { fontFamily: "Mont-Medium" },
-                ]}
-              >
-                Vodoinstalater i električar
-              </Text>
-              <View style={twrnc`flex-row items-center mt-1`}>
-                <Icon name="cash-outline" size={16} color="#22C55E" />
-                <Text
-                  style={[
-                    twrnc` ml-1 text-green-600 font-medium`,
-                    { fontFamily: "Mont-Medium" },
-                  ]}
-                >
-                  Od 2.500 RSD/h
-                </Text>
-              </View>
+              {worker.isVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                </View>
+              )}
             </View>
           </View>
-
-          <Text
-            style={[twrnc` mt-4 text-gray-700`, { fontFamily: "Mont-Regular" }]}
-          >
-            Profesionalni majstor sa preko 15 godina iskustva u oblasti
-            vodoinstalacija, električnih instalacija i opštih kućnih popravki.
-          </Text>
-
-          <View style={twrnc`flex-row mt-4`}>
-            <View style={twrnc`flex-1 items-center`}>
-              <Text
-                style={[twrnc` text-gray-500`, { fontFamily: "Mont-Medium" }]}
-              >
-                Iskustvo
+          
+          <View style={styles.workerStats}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { fontFamily: 'Mont-Bold' }]}>
+                {worker.rating || worker.averageRating || 4.5}
               </Text>
-              <Text style={[twrnc` font-bold`, { fontFamily: "Mont-Bold" }]}>
-                15+ godina
-              </Text>
-            </View>
-            <View style={[twrnc`w-[1px] h-full bg-gray-100`]}></View>
-            <View style={twrnc`flex-1 items-center`}>
-              <Text
-                style={[twrnc` text-gray-500`, { fontFamily: "Mont-Medium" }]}
-              >
-                Usluge
-              </Text>
-              <Text style={[twrnc` font-bold`, { fontFamily: "Mont-Bold" }]}>
-                12 vrsta
-              </Text>
-            </View>
-            <View style={[twrnc`w-[1px] h-full bg-gray-100`]}></View>
-            <View style={twrnc`flex-1 items-center`}>
-              <Text
-                style={[twrnc` text-gray-500`, { fontFamily: "Mont-Medium" }]}
-              >
-                Garancija
-              </Text>
-              <Text style={[twrnc` font-bold`, { fontFamily: "Mont-Bold" }]}>
-                12 meseci
+              <View style={styles.ratingStars}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons
+                    key={star}
+                    name={star <= (worker.rating || worker.averageRating || 4.5) ? "star" : "star-outline"}
+                    size={16}
+                    color="#F59E0B"
+                  />
+                ))}
+              </View>
+              <Text style={[styles.statLabel, { fontFamily: 'Mont-Regular' }]}>
+                {worker.reviewCount || worker.reviews || 0} ocena
               </Text>
             </View>
           </View>
         </View>
 
-        <View style={[twrnc`flex flex-row items-center px-4 gap-4`]}>
-          <TouchableOpacity
-            style={[
-              twrnc`flex flex-row items-center justify-center gap-3 p-4 bg-gray-100 flex-1 rounded-lg`,
-            ]}
-          >
-            <Icon name="mail" style={[twrnc`text-green-500`]} size={22} />
-            <Text style={[twrnc``, { fontFamily: "Mont-Medium" }]}>
+        <View style={styles.workerDetails}>
+          <View style={styles.detailRow}>
+            <Ionicons name="location-outline" size={16} color="#6B7280" />
+            <Text style={[styles.detailText, { fontFamily: 'Mont-Regular' }]}>
+              {worker.location || worker.city || 'Beograd'} • {worker.distance || 'N/A'}
+            </Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Ionicons name="time-outline" size={16} color="#6B7280" />
+            <Text style={[styles.detailText, { fontFamily: 'Mont-Regular' }]}>
+              Odgovor u {worker.responseTime || '2-4 sata'}
+            </Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Ionicons name="briefcase-outline" size={16} color="#6B7280" />
+            <Text style={[styles.detailText, { fontFamily: 'Mont-Regular' }]}>
+              {worker.experience || worker.yearsOfExperience || 'N/A'} iskustva
+            </Text>
+          </View>
+          
+          {worker.hourlyRate && (
+            <View style={styles.detailRow}>
+              <Ionicons name="cash-outline" size={16} color="#6B7280" />
+              <Text style={[styles.detailText, { fontFamily: 'Mont-Regular' }]}>
+                {worker.hourlyRate} RSD/sat
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Quick actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity onPress={handleBookNow} style={styles.bookButton}>
+            <Ionicons name="calendar-outline" size={20} color="white" />
+            <Text style={[styles.bookButtonText, { fontFamily: 'Mont-SemiBold' }]}>
+              Rezerviši sada
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity onPress={handleMessage} style={styles.messageButton}>
+            <Ionicons name="chatbubble-outline" size={20} color="#4ade80" />
+            <Text style={[styles.messageButtonText, { fontFamily: 'Mont-SemiBold' }]}>
               Pošalji poruku
             </Text>
           </TouchableOpacity>
         </View>
+      </View>
 
-        <Divider />
-        {/* Maps */}
-        <View style={twrnc`bg-white mb-2 p-4`}>
-          <Text
-            style={[
-              twrnc` text-lg font-bold mb-2`,
-              { fontFamily: "Mont-Bold" },
-            ]}
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'about' && styles.activeTab]}
+            onPress={() => setActiveTab('about')}
           >
-            Trenutna lokacija
-          </Text>
-          <View style={twrnc`h-40 rounded-lg overflow-hidden`}>
-            <MapView
-              onPress={() => setOpenMap(true)}
-              zoomControlEnabled={false}
-              style={twrnc`flex-1`}
-              initialRegion={majstorLokacija}
-            >
-              <Marker
-                coordinate={{
-                  latitude: majstorLokacija.latitude,
-                  longitude: majstorLokacija.longitude,
-                }}
-                title="Milan Petrović"
-                description="Dostupan"
-              >
-                <View style={twrnc`bg-green-500 p-2 rounded-full`}>
-                  <Icon name="person" size={16} color="#00" />
+            <Text style={[
+              styles.tabText, 
+              { fontFamily: 'Mont-Medium' },
+              activeTab === 'about' && styles.activeTabText
+            ]}>
+              O majstoru
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'services' && styles.activeTab]}
+            onPress={() => setActiveTab('services')}
+          >
+            <Text style={[
+              styles.tabText, 
+              { fontFamily: 'Mont-Medium' },
+              activeTab === 'services' && styles.activeTabText
+            ]}>
+              Usluge
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
+            onPress={() => setActiveTab('reviews')}
+          >
+            <Text style={[
+              styles.tabText, 
+              { fontFamily: 'Mont-Medium' },
+              activeTab === 'reviews' && styles.activeTabText
+            ]}>
+              Ocene ({reviews.length})
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
+      {/* Tab content */}
+      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+        {activeTab === 'about' && (
+          <View style={styles.aboutSection}>
+            <Text style={[styles.sectionTitle, { fontFamily: 'Mont-SemiBold' }]}>
+              O meni
+            </Text>
+            <Text style={[styles.description, { fontFamily: 'Mont-Regular' }]}>
+              {worker.description || worker.bio || 'Profesionalni radnik sa dugogodišnjim iskustvom u svojoj oblasti. Posvećen kvalitetu i zadovoljstvu klijenata.'}
+            </Text>
+            
+            {worker.languages && worker.languages.length > 0 && (
+              <>
+                <Text style={[styles.sectionTitle, { fontFamily: 'Mont-SemiBold' }]}>
+                  Jezici
+                </Text>
+                <View style={styles.languagesContainer}>
+                  {worker.languages.map((language, index) => (
+                    <View key={index} style={styles.languageBadge}>
+                      <Text style={[styles.languageText, { fontFamily: 'Mont-Medium' }]}>
+                        {language}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              </Marker>
-            </MapView>
-          </View>
-          <View style={twrnc`flex-row items-center mt-2`}>
-            <Icon name="location-outline" size={16} color="#3B82F6" />
-            <Text
-              style={[
-                twrnc` ml-1 text-gray-600`,
-                { fontFamily: "Mont-Regular" },
-              ]}
-            >
-              Novi Beograd (udaljenost 3.2 km)
+              </>
+            )}
+            
+            {worker.workingHours && (
+              <>
+                <Text style={[styles.sectionTitle, { fontFamily: 'Mont-SemiBold' }]}>
+                  Radno vreme
+                </Text>
+                <Text style={[styles.workingHours, { fontFamily: 'Mont-Regular' }]}>
+                  {worker.workingHours}
+                </Text>
+              </>
+            )}
+            
+            <Text style={[styles.sectionTitle, { fontFamily: 'Mont-SemiBold' }]}>
+              Statistika
             </Text>
-          </View>
-        </View>
-
-        {/* Confirmation Button */}
-        <TouchableOpacity
-          style={twrnc`mx-4 my-4 bg-blue-500 rounded-xl p-4 flex-row justify-between items-center`}
-          onPress={() => setShowAppointment(!showAppointment)}
-        >
-          <Text
-            style={[
-              twrnc` text-white text-lg font-bold`,
-              { fontFamily: "Mont-SemiBold" },
-            ]}
-          >
-            {showAppointment ? "Sakrij opcije zakazivanja" : "Zakaži termin"}
-          </Text>
-          <Icon
-            name={showAppointment ? "chevron-up" : "chevron-down"}
-            size={24}
-            color="#fff"
-          />
-        </TouchableOpacity>
-
-        {/* Sekcija za zakazivanje - prikazuje se samo ako je showAppointment true */}
-        {showAppointment && (
-          <View style={twrnc`bg-white p-4 mx-2 mb-4 rounded-xl shadow`}>
-            {/* Section Title */}
-            <Text
-              style={[
-                twrnc` text-lg font-bold mb-4`,
-                { fontFamily: "Mont-Bold" },
-              ]}
-            >
-              Odaberite datum i vreme
-            </Text>
-
-            {/* Selected Date View */}
-            <View
-              style={twrnc`flex-row justify-between items-center mb-4 bg-gray-50 p-3 rounded-lg`}
-            >
-              <View style={twrnc`flex-row items-center`}>
-                <Icon name="calendar" size={20} color="#3B82F6" />
-                <Text
-                  style={[
-                    twrnc` ml-2 font-medium`,
-                    { fontFamily: "Mont-Medium" },
-                  ]}
-                >
-                  {formatirajDatum(selectedDate)}
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <Text style={[styles.statCardValue, { fontFamily: 'Mont-Bold' }]}>
+                  {worker.completedJobs || worker.totalJobs || 0}
+                </Text>
+                <Text style={[styles.statCardLabel, { fontFamily: 'Mont-Regular' }]}>
+                  Završenih poslova
                 </Text>
               </View>
-              <TouchableOpacity
-                style={twrnc`flex-row items-center`}
-                onPress={() => setShowCalendar(true)}
-              >
-                <Text
-                  style={[
-                    twrnc` mr-1 text-blue-500`,
-                    { fontFamily: "Mont-Regular" },
-                  ]}
-                >
-                  Izaberi drugi datum
+              <View style={styles.statCard}>
+                <Text style={[styles.statCardValue, { fontFamily: 'Mont-Bold' }]}>
+                  {worker.satisfactionRate || worker.successRate || '95%'}
                 </Text>
-                <MaterialIcons name="date-range" size={18} color="#3B82F6" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Fast Date Picker */}
-            <Text
-              style={[twrnc` font-medium mb-2`, { fontFamily: "Mont-Medium" }]}
-            >
-              Brzi izbor datuma:
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={twrnc`mb-6`}
-              contentContainerStyle={twrnc`py-2`}
-            >
-              {datumi.map(renderDan)}
-            </ScrollView>
-
-            {/* Morning Shifts */}
-            <View style={twrnc`mb-6`}>
-              <View style={twrnc`flex-row items-center mb-3`}>
-                <FontAwesome
-                  name="sun-o"
-                  size={16}
-                  color="#FFB800"
-                  style={twrnc`mr-2`}
-                />
-                <Text
-                  style={[
-                    twrnc` text-base font-bold`,
-                    { fontFamily: "Mont-Bold" },
-                  ]}
-                >
-                  Jutarnji termini
+                <Text style={[styles.statCardLabel, { fontFamily: 'Mont-Regular' }]}>
+                  Stopa zadovoljstva
                 </Text>
-              </View>
-
-              <View style={twrnc`flex-row flex-wrap gap-2`}>
-                {jutarnjiTermini.map((slot) =>
-                  renderTermin(slot.vreme, selectedTime === slot.vreme)
-                )}
-              </View>
-            </View>
-
-            {/* Day Shifts */}
-            <View style={twrnc`mb-6`}>
-              <View style={twrnc`flex-row items-center mb-3`}>
-                <Icon
-                  name="partly-sunny-outline"
-                  size={18}
-                  color="#FF9500"
-                  style={twrnc`mr-2`}
-                />
-                <Text
-                  style={[
-                    twrnc` text-base font-bold`,
-                    { fontFamily: "Mont-Bold" },
-                  ]}
-                >
-                  Poslepodnevni termini
-                </Text>
-              </View>
-
-              <View style={twrnc`flex-row flex-wrap gap-2`}>
-                {poslepodnevniTermini.map((slot) =>
-                  renderTermin(slot.vreme, selectedTime === slot.vreme)
-                )}
-              </View>
-            </View>
-
-            {/* Nigth Shifts */}
-            <View style={twrnc`mb-6`}>
-              <View style={twrnc`flex-row items-center mb-3`}>
-                <Icon
-                  name="moon-outline"
-                  size={16}
-                  color="#6366F1"
-                  style={twrnc`mr-2`}
-                />
-                <Text
-                  style={[
-                    twrnc` text-base font-bold`,
-                    { fontFamily: "Mont-Bold" },
-                  ]}
-                >
-                  Večernji termini
-                </Text>
-              </View>
-
-              <View style={twrnc`flex-row flex-wrap gap-2`}>
-                {vecernjiTermini.map((slot) =>
-                  renderTermin(slot.vreme, selectedTime === slot.vreme)
-                )}
-              </View>
-            </View>
-
-            {/* Problem Details */}
-            <View style={twrnc`mb-6`}>
-              <Text
-                style={[
-                  twrnc` text-base font-bold mb-2`,
-                  { fontFamily: "Mont-Bold" },
-                ]}
-              >
-                Detalji problema
-              </Text>
-              <TouchableOpacity
-                style={twrnc`border border-gray-300 rounded-lg p-3 flex-row justify-between items-center`}
-              >
-                <TextInput placeholder="Opišite problem..." />
-                <Icon name="create-outline" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Choose Service */}
-            <View style={twrnc`mb-4`}>
-              <Text
-                style={[
-                  twrnc` text-base font-bold mb-2`,
-                  { fontFamily: "Mont-Bold" },
-                ]}
-              >
-                Izaberite uslugu
-              </Text>
-              <View
-                style={twrnc`bg-gray-50 rounded-lg divide-y divide-gray-200 overflow-hidden`}
-              >
-                <TouchableOpacity
-                  style={twrnc`flex-row justify-between items-center p-4 bg-[#3B82F6]`}
-                >
-                  <View style={twrnc`flex-row items-center`}>
-                    <Icon
-                      name="water-outline"
-                      size={20}
-                      color="#fff"
-                      style={twrnc`mr-2`}
-                    />
-                    <Text
-                      style={[
-                        twrnc`text-white`,
-                        { fontFamily: "Mont-Regular" },
-                      ]}
-                    >
-                      Popravka vodovodnih instalacija
-                    </Text>
-                  </View>
-                  <Text
-                    style={[twrnc` text-white`, { fontFamily: "Mont-Regular" }]}
-                  >
-                    2.500 RSD
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={twrnc`flex-row justify-between items-center p-4`}
-                >
-                  <View style={twrnc`flex-row items-center`}>
-                    <Icon
-                      name="flash-outline"
-                      size={20}
-                      color="#3B82F6"
-                      style={twrnc`mr-2`}
-                    />
-                    <Text style={[{ fontFamily: "Mont-Regular" }]}>
-                      Električne instalacije
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      twrnc` text-green-600`,
-                      { fontFamily: "Mont-Regular" },
-                    ]}
-                  >
-                    3.000 RSD
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={twrnc`flex-row justify-between items-center p-4`}
-                >
-                  <View style={twrnc`flex-row items-center`}>
-                    <Icon
-                      name="construct-outline"
-                      size={20}
-                      color="#3B82F6"
-                      style={twrnc`mr-2`}
-                    />
-                    <Text style={[{ fontFamily: "Mont-Regular" }]}>
-                      Opšte popravke
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      twrnc` text-green-600`,
-                      { fontFamily: "Mont-Regular" },
-                    ]}
-                  >
-                    2.800 RSD
-                  </Text>
-                </TouchableOpacity>
               </View>
             </View>
           </View>
         )}
-
-        {/* Cancellation */}
-        <View style={twrnc`bg-white p-4 mx-2 mb-4 rounded-xl shadow`}>
-          <Text
-            style={[
-              twrnc` text-lg font-bold mb-2`,
-              { fontFamily: "Mont-Bold" },
-            ]}
-          >
-            Uslovi korišćenja
-          </Text>
-          <View style={twrnc`flex-row items-start mb-2`}>
-            <Icon
-              name="checkmark-circle-outline"
-              size={18}
-              color="#22C55E"
-              style={twrnc`mt-1 mr-2`}
-            />
-            <Text
-              style={[
-                twrnc` flex-1 text-gray-700`,
-                { fontFamily: "Mont-Regular" },
-              ]}
-            >
-              Besplatno otkazivanje do 2 sata pre termina
+        
+        {activeTab === 'services' && (
+          <View style={styles.servicesSection}>
+            <Text style={[styles.sectionTitle, { fontFamily: 'Mont-SemiBold' }]}>
+              Usluge koje pružam
             </Text>
-          </View>
-          <View style={twrnc`flex-row items-start mb-2`}>
-            <Icon
-              name="checkmark-circle-outline"
-              size={18}
-              color="#22C55E"
-              style={twrnc`mt-1 mr-2`}
-            />
-            <Text
-              style={[
-                twrnc` flex-1 text-gray-700`,
-                { fontFamily: "Mont-Regular" },
-              ]}
-            >
-              Garancija na sve izvršene radove
-            </Text>
-          </View>
-          <View style={twrnc`flex-row items-start`}>
-            <Icon
-              name="checkmark-circle-outline"
-              size={18}
-              color="#22C55E"
-              style={twrnc`mt-1 mr-2`}
-            />
-            <Text
-              style={[
-                twrnc` flex-1 text-gray-700`,
-                { fontFamily: "Mont-Regular" },
-              ]}
-            >
-              Besplatna procena za složenije radove
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Bottom bar */}
-      <View
-        style={twrnc`px-4 py-4 bg-white border-t border-gray-200 flex-row justify-between items-center`}
-      >
-        <View>
-          <Text
-            style={[
-              twrnc` text-2xl font-bold text-green-600`,
-              { fontFamily: "Mont-Bold" },
-            ]}
-          >
-            2.500 RSD
-          </Text>
-          <Text style={[twrnc` text-gray-500`, { fontFamily: "Mont-Regular" }]}>
-            Početna cena (PDV uključen)
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => setShowConfirmation(true)}
-          style={twrnc`bg-blue-500 rounded-xl px-6 py-3`}
-        >
-          <Text
-            style={[
-              twrnc` text-white text-base font-medium`,
-              { fontFamily: "Mont-Medium" },
-            ]}
-          >
-            Zakaži sad
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Calendar Modal */}
-      <Modal visible={showCalendar} transparent={true} animationType="fade">
-        <View
-          style={twrnc`flex-1 bg-black bg-opacity-50 justify-end items-center`}
-        >
-          <View style={twrnc`bg-white w-full rounded-xl p-6 pb-10`}>
-            <View style={twrnc`flex-row justify-between items-center mb-4`}>
-              <Text
-                style={[twrnc` text-lg font-bold`, { fontFamily: "Mont-Bold" }]}
-              >
-                Izaberite datum
-              </Text>
-              <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                <Icon name="close" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
-
-            <CalendarPicker
-              onDateChange={odaberiKalendarskiDatum}
-              minDate={new Date()}
-              selectedDayColor="#3B82F6"
-              selectedDayTextColor="#FFFFFF"
-              previousTitle="Prethodni"
-              textStyle={{ fontFamily: "Mont-Regular" }}
-              nextTitle="Sledeći"
-              weekdays={["Ned", "Pon", "Uto", "Sre", "Čet", "Pet", "Sub"]}
-              months={[
-                "Januar",
-                "Februar",
-                "Mart",
-                "April",
-                "Maj",
-                "Jun",
-                "Jul",
-                "Avgust",
-                "Septembar",
-                "Oktobar",
-                "Novembar",
-                "Decembar",
-              ]}
-            />
-
-            <TouchableOpacity
-              style={twrnc`bg-blue-500 rounded-xl p-4 mt-4 items-center`}
-              onPress={() => setShowCalendar(false)}
-            >
-              <Text
-                style={[
-                  twrnc` text-white font-medium`,
-                  { fontFamily: "Mont-Medium" },
-                ]}
-              >
-                Potvrdi
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Fullscreen Map */}
-      <Modal visible={openMap} transparent={true} animationType="fade">
-        <View
-          style={twrnc`flex-1 bg-black bg-opacity-50 justify-end items-center`}
-        >
-          <View style={twrnc`bg-white w-full rounded-xl pb-10 overflow-hidden`}>
-            <View style={twrnc`h-[400px] overflow-hidden`}>
-              <MapView
-                onPress={() => setOpenMap(true)}
-                zoomControlEnabled={false}
-                style={twrnc`flex-1`}
-                initialRegion={majstorLokacija}
-              >
-                <Marker
-                  coordinate={{
-                    latitude: majstorLokacija.latitude,
-                    longitude: majstorLokacija.longitude,
-                  }}
-                  title="Milan Petrović"
-                  description="Dostupan"
+            {(worker.services || worker.skills || []).length > 0 ? (
+              (worker.services || worker.skills || []).map((service, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.serviceItem}
+                  onPress={() => setSelectedService(service)}
                 >
-                  <View style={twrnc`bg-green-500 p-2 rounded-full`}>
-                    <Icon name="person" size={16} color="#00" />
-                  </View>
-                </Marker>
-              </MapView>
-            </View>
-
-            <TouchableOpacity
-              style={twrnc`bg-gray-100 rounded-xl p-4 mt-4 items-center mx-4`}
-              onPress={() => setOpenMap(false)}
-            >
-              <Text
-                style={[
-                  twrnc` text-black font-medium`,
-                  { fontFamily: "Mont-Medium" },
-                ]}
-              >
-                Otkaži
-              </Text>
-            </TouchableOpacity>
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  <Text style={[styles.serviceText, { fontFamily: 'Mont-Medium' }]}>
+                    {typeof service === 'string' ? service : service.name || service.title}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyServices}>
+                <Text style={[styles.emptyServicesText, { fontFamily: 'Mont-Regular' }]}>
+                  Nema dostupnih usluga
+                </Text>
+              </View>
+            )}
           </View>
-        </View>
-      </Modal>
-
-      {/* Order Confirmation */}
-      <Modal
-        visible={showConfirmation}
-        transparent={true}
-        animationType="slide"
-      >
-        <View
-          style={twrnc`flex-1 bg-black bg-opacity-50 justify-end items-center`}
-        >
-          <View style={twrnc`bg-white w-full rounded-xl p-6 pb-10`}>
-            <View style={twrnc`flex-row justify-center items-center mb-4`}>
-              <Text
-                style={[
-                  twrnc` text-2xl text-center font-bold`,
-                  { fontFamily: "Mont-Bold" },
-                ]}
-              >
-                Potvrda
-              </Text>
-            </View>
-
-            <View style={[twrnc`w-full flex items-center`]}>
-              <Text
-                style={[twrnc`text-[16px]`, { fontFamily: "Mont-Regular" }]}
-              >
-                Milan Petrović
-              </Text>
-              <Text
-                style={[twrnc`text-[16px]`, { fontFamily: "Mont-Regular" }]}
-              >
-                4 Juni bb, Pale
-              </Text>
-              <Text style={[twrnc`text-[16px]`, { fontFamily: "Mont-Bold" }]}>
-                u 11:30, {formatirajDatum(selectedDate)}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={twrnc`bg-blue-500 rounded-xl p-4 mt-4 items-center`}
-              onPress={() => {
-                setPaymentView(true)
-                setShowConfirmation(false)
-              }}
-            >
-              <Text
-                style={[
-                  twrnc` text-white font-medium`,
-                  { fontFamily: "Mont-Medium" },
-                ]}
-              >
-                Potvrdi
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={twrnc`bg-gray-100 rounded-xl p-4 mt-4 items-center`}
-              onPress={() => setShowConfirmation(false)}
-            >
-              <Text
-                style={[
-                  twrnc` text-black font-medium`,
-                  { fontFamily: "Mont-Medium" },
-                ]}
-              >
-                Otkaži
-              </Text>
-            </TouchableOpacity>
+        )}
+        
+        {activeTab === 'reviews' && (
+          <View style={styles.reviewsSection}>
+            <Text style={[styles.sectionTitle, { fontFamily: 'Mont-SemiBold' }]}>
+              Ocene korisnika
+            </Text>
+            <FlatList
+              data={reviews}
+              renderItem={renderReview}
+              keyExtractor={(item) => item.id.toString()}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+            />
           </View>
-        </View>
-      </Modal>
-
-      {/* Choose Payment */}
-      <Modal visible={paymentView} transparent={true} animationType="fade">
-        <View
-          style={twrnc`flex-1 bg-black bg-opacity-50 justify-end items-center`}
-        >
-          <View style={twrnc`bg-white w-full rounded-xl pb-10 overflow-hidden`}>
-
-
-            <View style={[ twrnc`px-4 pt-4 flex gap-4` ]}>
-                {
-                  ["PayPal", "Kartica", "Gotovina"].map((paymentMethod) => {
-                    return (
-                      <View key={paymentMethod} style={[ twrnc`p-5 rounded-lg border border-gray-100 flex flex-row items-center gap-4` ]}>
-                        <View>
-                          <Icon name={`${paymentMethod === "Gotovina" ? "checkmark-circle" : "checkmark-circle-outline"}`} style={[ twrnc`text-blue-500` ]} size={22} />
-                        </View>
-                        <Text style={[ twrnc`text-[16px]`, { fontFamily: 'Mont-Medium' } ]}>{paymentMethod}</Text>
-                      </View>
-                    )
-                  })
-                }
-            </View>
-
-            <TouchableOpacity
-              style={twrnc`bg-blue-500 rounded-xl p-4 mt-4 items-center mx-4`}
-              onPress={() => setPaymentView(false)}
-            >
-              <Text
-                style={[
-                  twrnc` text-white font-medium`,
-                  { fontFamily: "Mont-Medium" },
-                ]}
-              >
-                Završi
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={twrnc`bg-gray-100 rounded-xl p-4 mt-4 items-center mx-4`}
-              onPress={() => setPaymentView(false)}
-            >
-              <Text
-                style={[
-                  twrnc` text-black font-medium`,
-                  { fontFamily: "Mont-Medium" },
-                ]}
-              >
-                Otkaži
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        )}
+      </ScrollView>
+    </View>
   );
 };
 
-export default WorkerScreen;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  header: {
+    height: 300,
+    position: 'relative',
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  headerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 16,
+    padding: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+  },
+  headerActions: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    padding: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+  },
+  workerInfoCard: {
+    backgroundColor: 'white',
+    margin: 16,
+    borderRadius: 16,
+    padding: 20,
+    marginTop: -50,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  workerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  workerBasicInfo: {
+    flex: 1,
+  },
+  workerName: {
+    fontSize: 24,
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  workerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  workerCategory: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginRight: 8,
+  },
+  verifiedBadge: {
+    marginLeft: 4,
+  },
+  workerStats: {
+    alignItems: 'flex-end',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  workerDetails: {
+    marginBottom: 20,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  bookButton: {
+    flex: 1,
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  bookButtonText: {
+    color: 'white',
+    fontSize: 16,
+  },
+  messageButton: {
+    flex: 1,
+    backgroundColor: '#EFF6FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  messageButtonText: {
+    color: '#4ade80',
+    fontSize: 16,
+  },
+  tabsContainer: {
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 16,
+  },
+  tab: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginRight: 8,
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#4ade80',
+  },
+  tabText: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  activeTabText: {
+    color: '#4ade80',
+  },
+  tabContent: {
+    flex: 1,
+    padding: 16,
+  },
+  aboutSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    color: '#1F2937',
+    marginBottom: 12,
+    marginTop: 20,
+  },
+  description: {
+    fontSize: 16,
+    color: '#6B7280',
+    lineHeight: 24,
+    marginBottom: 16,
+  },
+  languagesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  languageBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  languageText: {
+    fontSize: 14,
+    color: '#4ade80',
+  },
+  workingHours: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 16,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  statCardValue: {
+    fontSize: 24,
+    color: '#4ade80',
+    marginBottom: 4,
+  },
+  statCardLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  servicesSection: {
+    marginBottom: 20,
+  },
+  serviceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  serviceText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
+    marginLeft: 12,
+  },
+  reviewsSection: {
+    marginBottom: 20,
+  },
+  reviewCard: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  reviewerInfo: {
+    flex: 1,
+  },
+  reviewerName: {
+    fontSize: 16,
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  reviewService: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  reviewRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    fontSize: 14,
+    color: '#374151',
+    marginLeft: 4,
+  },
+  reviewComment: {
+    fontSize: 16,
+    color: '#6B7280',
+    lineHeight: 24,
+    marginBottom: 8,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 18,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+  },
+  retryText: {
+    color: 'white',
+    fontSize: 16,
+  },
+  emptyServices: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyServicesText: {
+    fontSize: 16,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
+});
+
+export default WokerScreen;

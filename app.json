@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "majstorsrbija",
+    "name": "TrebaMi",
     "slug": "majstorsrbija",
-    "version": "1.0.0",
+    "version": "1.0.1",
+    "sdkVersion": "53.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -12,16 +13,26 @@
       "resizeMode": "contain"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dakilimaster.majstorsrbija",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.dakilimaster.majstorsrbija"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "911db650-650a-4392-8ea7-eb1f08b84128"
+      }
     }
   }
 }

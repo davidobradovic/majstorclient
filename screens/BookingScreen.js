@@ -1,159 +1,32 @@
-import { StatusBar } from "expo-status-bar";
+import React, { useState, useEffect } from 'react';
 import {
-  Image,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  Touchable,
-  TouchableOpacity,
   View,
-} from "react-native";
-import tw from "twrnc";
-import { useFonts } from "expo-font";
-import AntDesign from "react-native-vector-icons/AntDesign";
-import Entypo from "react-native-vector-icons/Entypo";
-import Feather from "react-native-vector-icons/Feather";
-import IonIcons from "react-native-vector-icons/Ionicons";
-import { useEffect, useState } from "react";
-import Divider from "../components/Divider";
-import { useAuth } from "../context/AuthContext";
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  SafeAreaView,
+  Platform,
+  RefreshControl,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { useFonts } from 'expo-font';
+import { useAuth } from '../context/AuthContext';
+import tw from 'twrnc';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import ApiService from '../services/ApiService';
 
-const bookings = [
-  {
-    id: 1,
-    customerId: 101,
-    workerId: {
-      avatar: require("../assets/icon.png"),
-      fullName: "David Obradovic",
-      rating: {
-        rating: 4.7,
-        ratings: 190,
-      },
-    },
-    location: 301,
-    phoneNumber: "+1234567890",
-    phoneLocation: "+1987654321",
-    orderType: "online",
-    description: "Usluga čišćenja za stan 45B",
-    notes: "Musterija preferira ekološke proizvode",
-    paid: true,
-    paidType: "online",
-    status: "accepted",
-    dueDate: "2025-05-08T10:00:00Z",
-    createdAt: "2025-05-06T09:30:00Z",
-    totalPrice: 15000,
-  },
-  {
-    id: 2,
-    customerId: 102,
-    workerId: {
-      avatar: require("../assets/icon.png"),
-      fullName: "Ognjen Ogi",
-      rating: {
-        rating: 4.7,
-        ratings: 190,
-      },
-    },
-    location: 302,
-    phoneNumber: "+1098765432",
-    phoneLocation: "+1123456789",
-    orderType: "sms",
-    description: "Popravka sudopere u kuhinji",
-    notes: "Hitno",
-    paid: false,
-    paidType: "cash",
-    status: "requested",
-    dueDate: "2025-05-09T14:00:00Z",
-    createdAt: "2025-05-06T11:15:00Z",
-    totalPrice: 15000,
-  },
-  {
-    id: 3,
-    customerId: 103,
-    workerId: {
-      avatar: require("../assets/icon.png"),
-      fullName: "Elon Musk",
-      rating: {
-        rating: 4.7,
-        ratings: 190,
-      },
-    },
-    location: 303,
-    phoneNumber: "+14151234567",
-    phoneLocation: "+14159876543",
-    orderType: "online",
-    description: "Krečenje zidova u kancelariji",
-    notes: "",
-    paid: true,
-    paidType: "card",
-    status: "inProgress",
-    dueDate: "2025-05-10T09:00:00Z",
-    createdAt: "2025-05-06T13:45:00Z",
-    totalPrice: 15000,
-  },
-  {
-    id: 4,
-    customerId: 104,
-    workerId: {
-      avatar: require("../assets/icon.png"),
-      fullName: "Marko Markovic",
-      rating: {
-        rating: 4.7,
-        ratings: 190,
-      },
-    },
-    location: 304,
-    phoneNumber: "+447911123456",
-    phoneLocation: "+447911654321",
-    orderType: "sms",
-    description: "Elektro instalacija u novoj kući",
-    notes: "Poneti dodatne produžne kablove",
-    paid: false,
-    paidType: "cash",
-    status: "cancelled",
-    dueDate: "2025-05-11T12:00:00Z",
-    createdAt: "2025-05-06T14:20:00Z",
-    totalPrice: 15000,
-  },
-  {
-    id: 5,
-    customerId: 105,
-    workerId: {
-      avatar: require("../assets/icon.png"),
-      fullName: "Petar Kocic",
-      rating: {
-        rating: 4.7,
-        ratings: 190,
-      },
-    },
-    location: 305,
-    phoneNumber: "+61234567890",
-    phoneLocation: "+61987654321",
-    orderType: "online",
-    description: "Montaža nameštaja za dnevnu sobu",
-    notes: "Musterija ima IKEA nameštaj",
-    paid: true,
-    paidType: "online",
-    status: "completed",
-    dueDate: "2025-05-07T16:30:00Z",
-    createdAt: "2025-05-06T10:00:00Z",
-    totalPrice: 15000,
-  },
-];
+const BookingScreen = () => {
+  const { user, bookings, statusFormatter, apiLoading, error: apiError, fetchBookings } = useAuth();
+  const navigation = useNavigation();
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
+  const [loading, setLoading] = useState(true);
 
-
-
-export default function BookingScreen() {
-  const [selectedType, setSelectedType] = useState("all");
-  const { statusFormatter } = useAuth();
-  const [selectedReservation, setSelectedReservation] = useState(null);
-  const [selectedReservationModal, setSelectedReservationModal] =
-    useState(null);
-  const [loaded, error] = useFonts({
+  const [loaded, fontError] = useFonts({
     "Mont-Black": require("../assets/fonts/Montserrat-Black.ttf"),
     "Mont-BlackItalic": require("../assets/fonts/Montserrat-BlackItalic.ttf"),
     "Mont-Bold": require("../assets/fonts/Montserrat-Bold.ttf"),
@@ -174,394 +47,350 @@ export default function BookingScreen() {
     "Mont-ThinItalic": require("../assets/fonts/Montserrat-ThinItalic.ttf"),
   });
 
-  if (!loaded && !error) {
+  // Load bookings data
+  useEffect(() => {
+    const loadBookings = async () => {
+      try {
+        setLoading(true);
+        console.log('BookingScreen - User object:', user);
+        console.log('BookingScreen - User ID:', user?.id);
+        if (user?.id) {
+          await fetchBookings(user.id);
+        } else {
+          console.log('BookingScreen - No user ID available, skipping bookings fetch');
+        }
+      } catch (error) {
+        console.error('Error loading bookings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBookings();
+  }, [user?.id, fetchBookings]);
+
+  // Process bookings data for display
+  const processBookingsData = (bookingsData) => {
+    if (!bookingsData || !Array.isArray(bookingsData) || bookingsData.length === 0) return [];
+    
+    return bookingsData.map(booking => ({
+      id: booking.id,
+      title: booking.title || booking.description || 'Usluga',
+      description: booking.description || booking.notes || 'Detalji usluge',
+      price: booking.price || booking.totalAmount || 0,
+      status: booking.status || 'requested',
+      date: booking.scheduledDate ? new Date(booking.scheduledDate).toLocaleDateString('sr-RS') : new Date().toLocaleDateString('sr-RS'),
+      time: booking.scheduledTime || 'N/A',
+      worker: {
+        id: booking.worker?.id,
+        name: booking.worker?.firstName ? `${booking.worker.firstName} ${booking.worker.lastName}` : booking.worker?.name || 'Nepoznati radnik',
+        rating: booking.worker?.rating || booking.worker?.averageRating || 4.5,
+        avatar: booking.worker?.avatar || booking.worker?.profileImage || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
+      },
+      category: booking.category?.name || booking.serviceType || 'Usluga',
+      address: booking.address || booking.location || 'Adresa nije specificirana',
+      orderNumber: booking.orderNumber,
+      createdAt: booking.createdAt
+    }));
+  };
+
+  const displayBookings = processBookingsData(bookings);
+
+  const filteredBookings = activeTab === 'all' 
+    ? displayBookings 
+    : displayBookings.filter(booking => booking.status === activeTab);
+
+  const tabs = [
+    { key: 'all', label: 'Sve', count: displayBookings.length },
+    { key: 'requested', label: 'Zatraženo', count: displayBookings.filter(b => b.status === 'requested').length },
+    { key: 'accepted', label: 'Prihvaćeno', count: displayBookings.filter(b => b.status === 'accepted').length },
+    { key: 'inProgress', label: 'U toku', count: displayBookings.filter(b => b.status === 'inProgress').length },
+    { key: 'completed', label: 'Završeno', count: displayBookings.filter(b => b.status === 'completed').length },
+  ];
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (user?.id) {
+        await fetchBookings();
+      }
+    } catch (error) {
+      console.error('Error refreshing bookings:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleBookingAction = async (booking, action) => {
+    switch (action) {
+      case 'cancel':
+        Alert.alert(
+          'Otkaži rezervaciju',
+          'Da li ste sigurni da želite da otkažete ovu rezervaciju?',
+          [
+            { text: 'Otkaži', style: 'cancel' },
+            { 
+              text: 'Otkaži rezervaciju', 
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const response = await ApiService.updateOrderStatus(booking.id, 'cancelled');
+                  if (response.success) {
+                    Alert.alert('Uspešno', 'Rezervacija je otkazana');
+                    await fetchBookings(); // Refresh bookings
+                  } else {
+                    Alert.alert('Greška', response.message || 'Neuspešno otkazivanje rezervacije');
+                  }
+                } catch (error) {
+                  Alert.alert('Greška', 'Došlo je do greške prilikom otkazivanja rezervacije');
+                }
+              }
+            }
+          ]
+        );
+        break;
+      case 'rate':
+        Alert.alert('Ocenjivanje', 'Ocenjivanje će biti dostupno uskoro');
+        break;
+      case 'rebook':
+        Alert.alert('Ponovna rezervacija', 'Ponovna rezervacija će biti dostupna uskoro');
+        break;
+      case 'chat':
+        navigation.navigate('Chat', { 
+          workerId: booking.worker?.id, 
+          workerName: booking.worker?.name,
+          orderId: booking.id
+        });
+        break;
+    }
+  };
+
+  const getStatusColor = (status) => {
+    const statusInfo = statusFormatter(status);
+    return statusInfo.color;
+  };
+
+  const getStatusText = (status) => {
+    const statusInfo = statusFormatter(status);
+    return statusInfo.text;
+  };
+
+  if (!loaded && !fontError) {
     return null;
   }
 
-  const showBookingItem = (id) => {
-    if (selectedReservation === id) {
-      setSelectedReservation(null);
-    }
-    setSelectedReservation(id);
-    setSelectedReservationModal(!selectedReservationModal);
-  };
-
-  const choosenBooking = selectedReservation
-    ? bookings.find((booking) => booking.id === selectedReservation)
-    : null;
+  // Show loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={[tw`px-6 pt-4 pb-4 bg-white border-b border-gray-100`]}>
+          <Text style={[tw`text-2xl mb-2`, { fontFamily: 'Mont-Bold' }]}>
+            Moje rezervacije
+          </Text>
+          <Text style={[tw`text-gray-600`, { fontFamily: 'Mont-Regular' }]}>
+            Pratite status vaših rezervacija
+          </Text>
+        </View>
+        <View style={tw`flex-1 items-center justify-center`}>
+          <ActivityIndicator size="large" color="#4ade80" />
+          <Text style={[tw`text-gray-600 mt-4`, { fontFamily: 'Mont-Regular' }]}>
+            Učitavanje rezervacija...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <View style={[tw`flex-1 bg-white`]}>
-      <SafeAreaView style={[tw`flex-1`]}>
-        {/* Booking selection */}
-        <View
-          style={[
-            tw`flex flex-row items-center gap-1 bg-gray-100 rounded-xl mx-4 p-1`,
-          ]}
-        >
-          <TouchableOpacity
-            onPress={() => setSelectedType("all")}
-            style={[
-              tw`flex-1 rounded-xl flex items-center justify-center p-4 ${
-                selectedType === "all" ? "bg-blue-500" : null
-              }`,
-            ]}
-          >
-            <Text
-              style={[
-                tw`${selectedType === "all" ? "text-white" : null}`,
-                { fontFamily: "Mont-Bold", fontSize: 11 },
-              ]}
-            >
-              Sve
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setSelectedType("requested")}
-            style={[
-              tw`flex-1 rounded-xl flex items-center justify-center p-4 ${
-                selectedType === "requested" ? "bg-orange-500" : null
-              }`,
-            ]}
-          >
-            <Text
-              style={[
-                tw`${selectedType === "requested" ? "text-white" : null}`,
-                { fontFamily: "Mont-Bold", fontSize: 11 },
-              ]}
-            >
-              Aktivno
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setSelectedType("completed")}
-            style={[
-              tw`flex-1 rounded-xl flex items-center justify-center p-4 ${
-                selectedType === "completed" ? "bg-green-500" : null
-              }`,
-            ]}
-          >
-            <Text
-              style={[
-                tw`${selectedType === "completed" ? "text-white" : null}`,
-                { fontFamily: "Mont-Bold", fontSize: 11 },
-              ]}
-            >
-              Uspešno
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setSelectedType("cancelled")}
-            style={[
-              tw`flex-1 rounded-xl flex items-center justify-center p-4 ${
-                selectedType === "cancelled" ? "bg-red-600" : null
-              }`,
-            ]}
-          >
-            <Text
-              style={[
-                tw`${selectedType === "cancelled" ? "text-white" : null}`,
-                { fontFamily: "Mont-Bold", fontSize: 11 },
-              ]}
-            >
-              Otkazano
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView style={[tw`flex-1`]}>
-          <View style={[tw`mx-4 flex gap-3 mt-4 pb-4`]}>
-            {bookings
-              .filter((booking) => {
-                if (selectedType !== "all") {
-                  return booking.status === selectedType;
-                }
-                return true;
-              })
-              .map((booking) => {
-                return (
-                  <TouchableOpacity
-                    onPress={() => showBookingItem(booking.id)}
-                    key={booking.id}
-                    style={[tw`border border-gray-100 p-3 rounded-2xl`]}
-                  >
-                    <View
-                      style={[tw`flex flex-row items-center justify-between`]}
-                    >
-                      <Text style={[tw`text-blue-500`]}>#{booking.id}</Text>
-                      <View
-                        style={[
-                          tw`bg-[${
-                            statusFormatter(booking.status).color
-                          }] px-3 py-2 rounded-xl`,
-                        ]}
-                      >
-                        <Text style={[tw`text-white text-xs capitalize`]}>
-                          {statusFormatter(booking.status).text}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={[tw`mt-1 pb-3 border-b border-b-gray-100`]}>
-                      <Text style={[tw``, { fontFamily: "Mont-SemiBold" }]}>
-                        {booking.description}
-                      </Text>
-                    </View>
-                    <View>
-                      <View style={[tw`mt-3`]}>
-                        <View style={[tw`flex flex-row items-center gap-3`]}>
-                          <Image
-                            style={[
-                              tw`w-[10] h-[10] border border-gray-200`,
-                              { borderRadius: 60 },
-                            ]}
-                            source={booking.workerId.avatar}
-                          />
-                          <View>
-                            <Text
-                              style={[
-                                tw`text-base`,
-                                { fontFamily: "Mont-Bold" },
-                              ]}
-                            >
-                              {booking.workerId.fullName}
-                            </Text>
-                            <View
-                              style={[tw`flex flex-row items-center gap-2`]}
-                            >
-                              <View
-                                style={[tw`flex flex-row items-center gap-1`]}
-                              >
-                                <AntDesign
-                                  name="star"
-                                  color="#f0ad4f"
-                                  size={16}
-                                />
-                                <Text
-                                  style={[
-                                    tw`text-[#f0ad4f]`,
-                                    { fontFamily: "Mont-Bold" },
-                                  ]}
-                                >
-                                  {booking.workerId.rating.rating}
-                                </Text>
-                              </View>
-                              <Text
-                                style={[tw``, { fontFamily: "Mont-Medium" }]}
-                              >
-                                {booking.workerId.rating.ratings} Ocenjivanja
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={[tw`px-6 pt-4 pb-4 bg-white border-b border-gray-100`]}>
+        <Text style={[tw`text-2xl mb-2`, { fontFamily: 'Mont-Bold' }]}>
+          Moje rezervacije
+        </Text>
+        <Text style={[tw`text-gray-600`, { fontFamily: 'Mont-Regular' }]}>
+          Pratite status vaših rezervacija
+        </Text>
+      </View>
 
-      {selectedReservation && (
-        <Modal
-          transparent={true}
-          visible={selectedReservationModal}
-          onRequestClose={() => setSelectedReservationModal(false)}
-          animationType="slide"
-        >
-          <SafeAreaView style={tw`flex-1 bg-white`}>
-            <ScrollView style={[tw`flex-1`]}>
-              <View
-                style={[
-                  tw`mx-4 mt-2 flex flex-row items-center justify-between`,
-                ]}
-              >
-                <View style={[ tw`flex flex-row items-center gap-3` ]}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedReservation(null);
-                      setSelectedReservationModal(null);
-                    }}
-                    style={[tw`p-3 rounded-full bg-gray-100`]}
-                  >
-                    <IonIcons name="chevron-back" size={24} />
-                  </TouchableOpacity>
-                  <Text
-                    style={[
-                      tw`text-2xl text-blue-500`,
-                      { fontFamily: "Mont-Bold" },
-                    ]}
-                  >
-                    #{choosenBooking.id}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                    onPress={() => {
-                      setSelectedReservation(null);
-                      setSelectedReservationModal(null);
-                    }}
-                    style={[tw`p-3 rounded-full bg-gray-100`]}
-                  >
-                    <IonIcons name="mail" style={[tw`text-green-500`]} size={23} />
-                  </TouchableOpacity>
-              </View>
-              <Divider />
-              <View style={[tw`mx-4 border border-gray-100 p-3 rounded-2xl`]}>
-                <View style={[tw`flex flex-row items-center justify-between`]}>
-                  <Text style={[tw`text-blue-500`]}>#{choosenBooking.id}</Text>
-                  <View
-                    style={[
-                      tw`bg-[${
-                        statusFormatter(choosenBooking.status).color
-                      }] px-3 py-2 rounded-xl`,
-                    ]}
-                  >
-                    <Text style={[tw`text-white text-xs capitalize`]}>
-                      {statusFormatter(choosenBooking.status).text}
+      {/* Tabs */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={tw`bg-white border-b border-gray-100`}
+        contentContainerStyle={tw`px-6 py-4`}
+      >
+        {tabs.map((tab) => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[
+              tw`px-4 py-2 rounded-full mr-3 flex-row items-center`,
+                              activeTab === tab.key ? tw`bg-green-500` : tw`bg-gray-100`
+            ]}
+            onPress={() => setActiveTab(tab.key)}
+          >
+            <Text style={[
+              tw`text-sm`,
+              activeTab === tab.key ? tw`text-white` : tw`text-gray-700`,
+              { fontFamily: 'Mont-Medium' }
+            ]}>
+              {tab.label}
+            </Text>
+            <View style={[
+              tw`ml-2 px-2 py-1 rounded-full`,
+                              activeTab === tab.key ? tw`bg-green-400` : tw`bg-gray-200`
+            ]}>
+              <Text style={[
+                tw`text-xs`,
+                activeTab === tab.key ? tw`text-white` : tw`text-gray-600`,
+                { fontFamily: 'Mont-Medium' }
+              ]}>
+                {tab.count}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Bookings List */}
+      <ScrollView 
+        style={tw`flex-1`}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {filteredBookings.length === 0 ? (
+          <View style={tw`flex-1 items-center justify-center py-20`}>
+            <Ionicons name="calendar-outline" size={64} color="#9CA3AF" />
+            <Text style={[tw`text-lg text-gray-500 mt-4`, { fontFamily: 'Mont-Medium' }]}>
+              Nema rezervacija
+            </Text>
+            <Text style={[tw`text-gray-400 text-center mt-2 px-8`, { fontFamily: 'Mont-Regular' }]}>
+              {activeTab === 'all' 
+                ? 'Nemate još uvek rezervacija. Započnite sa pronalaženjem usluga!'
+                : `Nemate rezervacija sa statusom "${tabs.find(t => t.key === activeTab)?.label}"`
+              }
+            </Text>
+          </View>
+        ) : (
+          <View style={tw`px-6 py-4`}>
+            {filteredBookings.map((booking) => (
+              <View key={booking.id} style={tw`bg-white rounded-xl p-4 mb-4 shadow-sm border border-gray-100`}>
+                {/* Header */}
+                <View style={tw`flex-row justify-between items-start mb-3`}>
+                  <View style={tw`flex-1`}>
+                    <Text style={[tw`text-lg mb-1`, { fontFamily: 'Mont-Bold' }]}>
+                      {booking.title}
+                    </Text>
+                    <Text style={[tw`text-gray-600 mb-2`, { fontFamily: 'Mont-Regular' }]}>
+                      {booking.description}
+                    </Text>
+                  </View>
+                  <View style={[
+                    tw`px-3 py-1 rounded-full`,
+                    { backgroundColor: `${getStatusColor(booking.status)}20` }
+                  ]}>
+                    <Text style={[
+                      tw`text-sm`,
+                      { fontFamily: 'Mont-Medium', color: getStatusColor(booking.status) }
+                    ]}>
+                      {getStatusText(booking.status)}
                     </Text>
                   </View>
                 </View>
-                <View style={[tw`mt-1 pb-3 border-b border-b-gray-100`]}>
-                  <Text style={[tw``, { fontFamily: "Mont-SemiBold" }]}>
-                    {choosenBooking.description}
-                  </Text>
-                </View>
-                <View>
-                  <View style={[tw`mt-3`]}>
-                    <View style={[tw`flex flex-row items-center gap-3`]}>
-                      <Image
-                        style={[
-                          tw`w-[10] h-[10] border border-gray-200`,
-                          { borderRadius: 60 },
-                        ]}
-                        source={choosenBooking.workerId.avatar}
-                      />
-                      <View>
-                        <Text
-                          style={[tw`text-base`, { fontFamily: "Mont-Bold" }]}
-                        >
-                          {choosenBooking.workerId.fullName}
-                        </Text>
-                        <View style={[tw`flex flex-row items-center gap-2`]}>
-                          <View style={[tw`flex flex-row items-center gap-1`]}>
-                            <AntDesign name="star" color="#f0ad4f" size={16} />
-                            <Text
-                              style={[
-                                tw`text-[#f0ad4f]`,
-                                { fontFamily: "Mont-Bold" },
-                              ]}
-                            >
-                              {choosenBooking.workerId.rating.rating}
-                            </Text>
-                          </View>
-                          <Text style={[tw``, { fontFamily: "Mont-Medium" }]}>
-                            {choosenBooking.workerId.rating.ratings} Ocenjivanja
-                          </Text>
-                        </View>
-                      </View>
+
+                {/* Worker Info */}
+                <View style={tw`flex-row items-center mb-3`}>
+                  <Image
+                    source={{ uri: booking.worker?.avatar }}
+                    style={tw`w-12 h-12 rounded-full mr-3`}
+                  />
+                  <View style={tw`flex-1`}>
+                    <Text style={[tw`text-base`, { fontFamily: 'Mont-SemiBold' }]}>
+                      {booking.worker?.name}
+                    </Text>
+                    <View style={tw`flex-row items-center`}>
+                      <Ionicons name="star" size={16} color="#F59E0B" />
+                      <Text style={[tw`text-sm text-gray-600 ml-1`, { fontFamily: 'Mont-Regular' }]}>
+                        {booking.worker?.rating}
+                      </Text>
                     </View>
                   </View>
-                </View>
-              </View>
-              <View
-                style={[
-                  tw`mx-4 mt-4 border border-dashed bg-red-50 border-red-500 p-3 rounded-2xl`,
-                ]}
-              >
-                <Text
-                  style={[tw`text-base mb-1`, { fontFamily: "Mont-Medium" }]}
-                >
-                  Politika otkazivanja
-                </Text>
-                <Text style={[tw`text-xs`, { fontFamily: "Mont-Regular" }]}>
-                  Ako otkažete manje od 24 sata pre termina, može Vam biti
-                  naplaćena naknada za otkazivanje u iznosu do pune cene
-                  rezervisanih usluga. Ako je odabrano plaćanje gotovinom,
-                  korišćenje usluga može biti ograničeno do potvrde uplate.
-                </Text>
-              </View>
-              <Divider />
-              <View style={[ tw`mx-4 mb-4 p-4 rounded-xl flex flex-row items-center gap-2 bg-white border border-dashed border-gray-200` ]}>
-                <IonIcons name="checkmark-done-circle" size={22} style={[ tw`text-blue-500` ]} />
-                <Text>Vodovod kuhinjskih prikljucaka</Text>
-              </View>
-              <View style={[tw`mx-4 p-4 bg-gray-100 border-2 border-dashed border-blue-500 rounded-2xl`]}>
-              <Text style={[tw`text-xl mb-3`, { fontFamily: "Mont-Bold" }]}>
-                Rezime narudžbine
-              </Text>
-
-              <View>
-                <View
-                  style={[tw`flex flex-row items-center justify-between mb-2`]}
-                >
-                  <Text
-                    style={[tw`text-[16px]`, { fontFamily: "Mont-Medium" }]}
-                  >
-                    Međuzbir
-                  </Text>
-                  <Text
-                    style={[tw`text-[16px]`, { fontFamily: "Mont-SemiBold" }]}
-                  >
-                    {(choosenBooking.totalPrice * 0.83).toLocaleString(
-                      undefined,
-                      { maximumFractionDigits: 2 }
-                    )}{" "}
-                    RSD
+                  <Text style={[tw`text-lg font-bold`, { fontFamily: 'Mont-Bold' }]}>
+                    {booking.price} RSD
                   </Text>
                 </View>
-                <View style={[tw`flex flex-row items-center justify-between`]}>
-                  <Text
-                    style={[tw`text-[16px]`, { fontFamily: "Mont-Medium" }]}
+
+                {/* Details */}
+                <View style={tw`mb-4`}>
+                  <View style={tw`flex-row items-center mb-2`}>
+                    <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                    <Text style={[tw`text-gray-600 ml-2`, { fontFamily: 'Mont-Regular' }]}>
+                      {booking.date} u {booking.time}
+                    </Text>
+                  </View>
+                  <View style={tw`flex-row items-center mb-2`}>
+                    <Ionicons name="location-outline" size={16} color="#6B7280" />
+                    <Text style={[tw`text-gray-600 ml-2`, { fontFamily: 'Mont-Regular' }]}>
+                      {booking.address}
+                    </Text>
+                  </View>
+                  <View style={tw`flex-row items-center`}>
+                    <Ionicons name="briefcase-outline" size={16} color="#6B7280" />
+                    <Text style={[tw`text-gray-600 ml-2`, { fontFamily: 'Mont-Regular' }]}>
+                      {booking.category}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Actions */}
+                <View style={tw`flex-row gap-2`}>
+                  <TouchableOpacity
+                    style={tw`flex-1 bg-green-500 py-3 rounded-lg items-center`}
+                    onPress={() => handleBookingAction(booking, 'chat')}
                   >
-                    Porez (PDV)
-                  </Text>
-                  <Text
-                    style={[tw`text-[16px]`, { fontFamily: "Mont-SemiBold" }]}
-                  >
-                    {(choosenBooking.totalPrice * 0.17).toLocaleString(
-                      undefined,
-                      { maximumFractionDigits: 2 }
-                    )}{" "}
-                    RSD
-                  </Text>
+                    <Text style={[tw`text-white`, { fontFamily: 'Mont-Medium' }]}>
+                      Poruka
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {booking.status === 'requested' && (
+                    <TouchableOpacity
+                      style={tw`flex-1 bg-red-500 py-3 rounded-lg items-center`}
+                      onPress={() => handleBookingAction(booking, 'cancel')}
+                    >
+                      <Text style={[tw`text-white`, { fontFamily: 'Mont-Medium' }]}>
+                        Otkaži
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {booking.status === 'completed' && (
+                    <TouchableOpacity
+                      style={tw`flex-1 bg-green-500 py-3 rounded-lg items-center`}
+                      onPress={() => handleBookingAction(booking, 'rate')}
+                    >
+                      <Text style={[tw`text-white`, { fontFamily: 'Mont-Medium' }]}>
+                        Oceni
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
-
-              {choosenBooking.paidType === "cash" && (
-                <View style={[tw`bg-yellow-100 p-3 rounded-lg mt-4`]}>
-                  <Text
-                    style={[tw`text-yellow-800`, { fontFamily: "Mont-Medium" }]}
-                  >
-                    Plaćanje gotovinom: korišćenje usluga može biti ograničeno
-                    dok uplata ne bude potvrđena.
-                  </Text>
-                </View>
-              )}
-
-              <View style={[tw`w-full h-[0.5] bg-gray-100 my-4`]}></View>
-
-              <TouchableOpacity
-                style={[
-                  tw`p-4 border-2 border-red-500 flex items-center justify-center rounded-xl`,
-                ]}
-              >
-                <Text
-                  style={[tw`text-red-500`, { fontFamily: "Mont-SemiBold" }]}
-                >
-                  Otkaži rezervaciju
-                </Text>
-              </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </SafeAreaView>
-        </Modal>
-      )}
-    </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#F9FAFB',
   },
 });
+
+export default BookingScreen;

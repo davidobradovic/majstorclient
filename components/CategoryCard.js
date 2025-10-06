@@ -1,72 +1,233 @@
-import { TouchableOpacity, View, Text, Image } from 'react-native';
-import { AntDesign } from '@expo/vector-icons';
-import tw from 'twrnc';
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 
-export const CategoryCard = ({ item, selectedCategory, selectedSubcategory, navigation, closeItemsModal }) => (
-  <TouchableOpacity 
-    onPress={() => {
-      navigation.navigate('WorkerDetails');
-      closeItemsModal();
-    }}
-    key={item.id}
-    style={[
-      tw`bg-white rounded-2xl shadow-sm overflow-hidden mb-4 border border-gray-50`,
-    ]}
-  >
-    {/* Testni baner / slika usluge */}
-    <View style={tw`h-40 bg-gray-100 relative`}>
-      <Image
-        source={{ uri: item.banner }}
-        style={tw`w-full h-full`}
-        resizeMode="cover"
-      />
-      <View style={[tw`absolute top-3 right-3 bg-white px-2 py-1 rounded-lg shadow-sm`]}>
-        <Text style={[tw`text-blue-500`, { fontFamily: 'Mont-Bold' }]}>{(item.price).toLocaleString(void 0, { maxiumumFractionDigits: 2 })} RSD</Text>
-      </View>
-    </View>
+const CategoryCard = ({ 
+  category, 
+  onPress, 
+  isSelected = false,
+  showArrow = true,
+  compact = false 
+}) => {
+  const [loaded, error] = useFonts({
+    "Mont-Black": require("../assets/fonts/Montserrat-Black.ttf"),
+    "Mont-BlackItalic": require("../assets/fonts/Montserrat-BlackItalic.ttf"),
+    "Mont-Bold": require("../assets/fonts/Montserrat-Bold.ttf"),
+    "Mont-BoldItalic": require("../assets/fonts/Montserrat-BoldItalic.ttf"),
+    "Mont-ExtraBold": require("../assets/fonts/Montserrat-ExtraBold.ttf"),
+    "Mont-ExtraBoldItalic": require("../assets/fonts/Montserrat-ExtraBoldItalic.ttf"),
+    "Mont-ExtraLight": require("../assets/fonts/Montserrat-ExtraLight.ttf"),
+    "Mont-ExtraLightItalic": require("../assets/fonts/Montserrat-ExtraLightItalic.ttf"),
+    "Mont-Italic": require("../assets/fonts/Montserrat-Italic.ttf"),
+    "Mont-Light": require("../assets/fonts/Montserrat-Light.ttf"),
+    "Mont-LightItalic": require("../assets/fonts/Montserrat-LightItalic.ttf"),
+    "Mont-Medium": require("../assets/fonts/Montserrat-Medium.ttf"),
+    "Mont-MediumItalic": require("../assets/fonts/Montserrat-MediumItalic.ttf"),
+    "Mont-Regular": require("../assets/fonts/Montserrat-Regular.ttf"),
+    "Mont-SemiBold": require("../assets/fonts/Montserrat-SemiBold.ttf"),
+    "Mont-SemiBoldItalic": require("../assets/fonts/Montserrat-SemiBoldItalic.ttf"),
+    "Mont-Thin": require("../assets/fonts/Montserrat-Thin.ttf"),
+    "Mont-ThinItalic": require("../assets/fonts/Montserrat-ThinItalic.ttf"),
+  });
 
-    {/* Tekstualni sadržaj */}
-    <View style={tw`p-4`}>
-      <View style={tw`flex-row items-center mb-2`}>
+  if (!loaded && !error) {
+    return null;
+  }
+
+  const handlePress = () => {
+    if (onPress) {
+      onPress(category);
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.container,
+        compact && styles.compactContainer,
+        isSelected && styles.selectedContainer
+      ]}
+      onPress={handlePress}
+      activeOpacity={0.8}
+    >
+      {/* Icon or Image */}
+      {category.image ? (
+        <Image
+          source={{ uri: category.image }}
+          style={[styles.image, compact && styles.compactImage]}
+          resizeMode="cover"
+        />
+      ) : (
         <View style={[
-          tw`h-6 w-6 rounded-full mr-2 flex items-center justify-center`, 
-          selectedCategory && { backgroundColor: selectedCategory.color }
+          styles.iconContainer, 
+          compact && styles.compactIconContainer,
+          { backgroundColor: category.color || '#4ade80' }
         ]}>
-          {selectedCategory && (
-            <Image
-              style={tw`h-3 w-3`}
-              source={{ uri: `https://backend.davidtesla.online/uploads/${selectedCategory.icon}` }}
-            />
-          )}
+          <Ionicons 
+            name={category.icon || 'construct-outline'} 
+            size={compact ? 20 : 24} 
+            color="white" 
+          />
         </View>
-        <Text style={[tw`text-xs text-gray-500`, { fontFamily: 'Mont-Medium' }]}>
-          {selectedSubcategory ? selectedSubcategory.title : selectedCategory?.title}
+      )}
+
+      {/* Content */}
+      <View style={[styles.content, compact && styles.compactContent]}>
+        <Text 
+          style={[
+            styles.title, 
+            { fontFamily: 'Mont-SemiBold' },
+            compact && styles.compactTitle,
+            isSelected && styles.selectedTitle
+          ]} 
+          numberOfLines={compact ? 1 : 2}
+        >
+          {category.name}
         </Text>
-      </View>
-
-      <Text style={[tw`text-lg mb-1`, { fontFamily: 'Mont-SemiBold' }]}>
-        {selectedSubcategory 
-          ? `${selectedSubcategory.title} - Premium usluga ${item}` 
-          : `${selectedCategory?.title} - Premium usluga ${item}`}
-      </Text>
-
-      <Text style={[tw`text-sm text-gray-500 mb-3`, { fontFamily: 'Mont-Regular' }]}>
-        Profesionalna usluga vrhunskog kvaliteta sa garancijom zadovoljstva.
-      </Text>
-
-      {/* Ocene i dugme */}
-      <View style={tw`flex-row justify-between items-center`}>
-        <View style={tw`flex-row items-center`}>
-          <AntDesign name="star" size={14} color="#FFB800" />
-          <Text style={[tw`text-sm ml-1`, { fontFamily: 'Mont-Medium' }]}>4.{item.id + 4}</Text>
-          <Text style={[tw`text-sm text-gray-400 ml-1`, { fontFamily: 'Mont-Regular' }]}>
-            ({Math.floor(Math.random() * 200) + 100} ocena)
+        
+        {!compact && category.description && (
+          <Text 
+            style={[
+              styles.description, 
+              { fontFamily: 'Mont-Regular' }
+            ]} 
+            numberOfLines={2}
+          >
+            {category.description}
           </Text>
-        </View>
-        <TouchableOpacity style={tw`bg-blue-500 py-2 px-4 rounded-lg`}>
-          <Text style={[tw`text-white`, { fontFamily: 'Mont-Medium' }]}>Zakaži majstora</Text>
-        </TouchableOpacity>
+        )}
+
+        {!compact && category.serviceCount && (
+          <View style={styles.serviceCount}>
+            <Text style={[styles.serviceCountText, { fontFamily: 'Mont-Regular' }]}>
+              {category.serviceCount} usluga
+            </Text>
+          </View>
+        )}
       </View>
-    </View>
-  </TouchableOpacity>
-);
+
+      {/* Arrow */}
+      {showArrow && (
+        <View style={styles.arrowContainer}>
+          <Ionicons 
+            name="chevron-forward" 
+            size={16} 
+            color={isSelected ? '#4ade80' : '#9CA3AF'} 
+          />
+        </View>
+      )}
+
+      {/* Selection Indicator */}
+      {isSelected && (
+        <View style={styles.selectionIndicator}>
+          <Ionicons name="checkmark-circle" size={20} color="#4ade80" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  compactContainer: {
+    padding: 12,
+    marginBottom: 8,
+  },
+  selectedContainer: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 2,
+    borderColor: '#4ade80',
+  },
+  image: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    marginRight: 16,
+  },
+  compactImage: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+  },
+  iconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  compactIconContainer: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+  },
+  content: {
+    flex: 1,
+  },
+  compactContent: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    color: '#1F2937',
+    marginBottom: 4,
+    lineHeight: 22,
+  },
+  compactTitle: {
+    fontSize: 14,
+    marginBottom: 0,
+  },
+  selectedTitle: {
+    color: '#4ade80',
+  },
+  description: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  serviceCount: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  serviceCountText: {
+    fontSize: 12,
+    color: '#374151',
+  },
+  arrowContainer: {
+    marginLeft: 8,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+  },
+});
+
+export default CategoryCard;

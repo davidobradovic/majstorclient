@@ -1,123 +1,39 @@
-// import React, { useState, useEffect } from "react";
-// import {
-//   View,
-//   Text,
-//   TouchableOpacity,
-//   SafeAreaView,
-//   ScrollView,
-//   StatusBar,
-//   Image,
-//   Modal,
-//   TextInput,
-// } from "react-native";
-// import Icon from "react-native-vector-icons/Ionicons";
-// import MaterialIcons from "react-native-vector-icons/MaterialIcons";
-// import FontAwesome from "react-native-vector-icons/FontAwesome";
-// import tw from "twrnc";
-// import { useNavigation } from "@react-navigation/native";
-// import { useFonts } from "expo-font";
-// import Divider from "../../components/Divider";
-
-// const BecomeWorker = () => {
-//   const [loaded, error] = useFonts({
-//     "Mont-Black": require("../../assets/fonts/Montserrat-Black.ttf"),
-//     "Mont-BlackItalic": require("../../assets/fonts/Montserrat-BlackItalic.ttf"),
-//     "Mont-Bold": require("../../assets/fonts/Montserrat-Bold.ttf"),
-//     "Mont-BoldItalic": require("../../assets/fonts/Montserrat-BoldItalic.ttf"),
-//     "Mont-ExtraBold": require("../../assets/fonts/Montserrat-ExtraBold.ttf"),
-//     "Mont-ExtraBoldItalic": require("../../assets/fonts/Montserrat-ExtraBoldItalic.ttf"),
-//     "Mont-ExtraLight": require("../../assets/fonts/Montserrat-ExtraLight.ttf"),
-//     "Mont-ExtraLightItalic": require("../../assets/fonts/Montserrat-ExtraLightItalic.ttf"),
-//     "Mont-Italic": require("../../assets/fonts/Montserrat-Italic.ttf"),
-//     "Mont-Light": require("../../assets/fonts/Montserrat-Light.ttf"),
-//     "Mont-LightItalic": require("../../assets/fonts/Montserrat-LightItalic.ttf"),
-//     "Mont-Medium": require("../../assets/fonts/Montserrat-Medium.ttf"),
-//     "Mont-MediumItalic": require("../../assets/fonts/Montserrat-MediumItalic.ttf"),
-//     "Mont-Regular": require("../../assets/fonts/Montserrat-Regular.ttf"),
-//     "Mont-SemiBold": require("../../assets/fonts/Montserrat-SemiBold.ttf"),
-//     "Mont-SemiBoldItalic": require("../../assets/fonts/Montserrat-SemiBoldItalic.ttf"),
-//     "Mont-Thin": require("../../assets/fonts/Montserrat-Thin.ttf"),
-//     "Mont-ThinItalic": require("../../assets/fonts/Montserrat-ThinItalic.ttf"),
-//   });
-
-//   const navigation = useNavigation();
-
-//   return (
-//     <SafeAreaView style={[tw`flex-1 bg-white`]}>
-//       <View style={[tw`p-4 flex-1`]}>
-//         <Text style={[tw`text-2xl text-center`, { fontFamily: "Mont-Bold" }]}>
-//           Postani Radnik
-//         </Text>
-
-//         <View style={[tw`flex gap-5 mt-14`]}>
-//           <View>
-//             <Text
-//               style={[tw`text-xs mb-1 uppercase`, { fontFamily: "Mont-Bold" }]}
-//             >
-//               Opis Profila
-//             </Text>
-//             <TextInput
-//               numberOfLines={10}
-//               multiline={true}
-//               style={[tw`p-4 bg-gray-100 rounded-xl`]}
-//               placeholder="Unesite ime i prezime"
-//             />
-//           </View>
-
-//           <View style={[tw`bg-yellow-100 p-3 rounded-lg`]}>
-//             <Text style={[tw`text-yellow-800`, { fontFamily: "Mont-Medium" }]}>
-//               Za verifikaciju je potrebno da postavite slike Vašeg identifikacionog dokumenta ( pasoš, lična dozvola ili vozačka dozvola ).
-//             </Text>
-//             <Text style={[tw`text-yellow-800`, { fontFamily: "Mont-Bold" }]}>
-//               Opcionalno možete izabrati i dokument o Vašem poslu
-//             </Text>
-//           </View>
-
-//           <TouchableOpacity style={[ tw`py-8 bg-gray-100 border border-gray-200 border-dashed rounded-2xl flex items-center justify-center` ]}>
-//             <Icon name="cloud-upload-outline" style={[ tw`text-gray-500 mb-4` ]} size={30} />
-//             <Text style={[ tw`text-center text-black`, { fontFamily: 'Mont-SemiBold' } ]}>Izaberite fotografije dokumenta</Text>
-//             <Text style={[ tw`text-center text-gray-500 text-xs mt'1`, { fontFamily: 'Mont-SemiBold' } ]}>Dokumenti će biti pregledani od strane ovlaštenih lica sistema TrebaMi. Nijedna Vaša informacija neće biti prikazana nepoznatim licima.</Text>
-//           </TouchableOpacity>
-
-//           <TouchableOpacity
-//             style={[
-//               tw`p-4 bg-blue-500 rounded-xl flex items-center justify-center`,
-//             ]}
-//           >
-//             <Text style={[tw`text-white`, { fontFamily: "Mont-Bold" }]}>
-//               Pošalji Prijavu
-//             </Text>
-//           </TouchableOpacity>
-//         </View>
-//       </View>
-//     </SafeAreaView>
-//   );
-// };
-
-// export default BecomeWorker;
-
-
-import React, { useState, useEffect } from "react";
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  SafeAreaView,
+  StyleSheet,
   ScrollView,
-  StatusBar,
+  TouchableOpacity,
   Image,
-  Modal,
+  SafeAreaView,
+  Platform,
   TextInput,
-} from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
-import MaterialIcons from "react-native-vector-icons/MaterialIcons";
-import FontAwesome from "react-native-vector-icons/FontAwesome";
-import tw from "twrnc";
-import { useNavigation } from "@react-navigation/native";
-import { useFonts } from "expo-font";
-import Divider from "../../components/Divider";
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { useFonts } from 'expo-font';
+import { useAuth } from '../../context/AuthContext';
+import tw from 'twrnc';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const BecomeWorker = () => {
+  const { user } = useAuth();
+  const navigation = useNavigation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: user?.fullName || '',
+    email: user?.email || '',
+    phone: '',
+    category: '',
+    experience: '',
+    description: '',
+    hourlyRate: '',
+    availability: '',
+    documents: []
+  });
+
   const [loaded, error] = useFonts({
     "Mont-Black": require("../../assets/fonts/Montserrat-Black.ttf"),
     "Mont-BlackItalic": require("../../assets/fonts/Montserrat-BlackItalic.ttf"),
@@ -139,66 +55,353 @@ const BecomeWorker = () => {
     "Mont-ThinItalic": require("../../assets/fonts/Montserrat-ThinItalic.ttf"),
   });
 
-  const navigation = useNavigation();
+  const categories = [
+    'Aparati', 'Električar', 'Vodoinstalater', 'Moler', 'Stolar', 'Čistačica',
+    'Vrtlar', 'IT usluge', 'Prevoz', 'Ostalo'
+  ];
 
-  if (!loaded) return null;
+  const experienceLevels = [
+    'Početnik (0-2 godine)',
+    'Iskusan (3-5 godina)',
+    'Profesionalac (5-10 godina)',
+    'Ekspert (10+ godina)'
+  ];
+
+  const availabilityOptions = [
+    'Puno radno vreme',
+    'Polovično radno vreme',
+    'Vikend',
+    'Po dogovoru',
+    'Hitne intervencije'
+  ];
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    // Form validation
+    if (!formData.fullName.trim()) {
+      Alert.alert("Greška", "Molimo unesite puno ime");
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      Alert.alert("Greška", "Molimo unesite email adresu");
+      return;
+    }
+
+    if (!formData.phone.trim()) {
+      Alert.alert("Greška", "Molimo unesite broj telefona");
+      return;
+    }
+
+    if (!formData.category) {
+      Alert.alert("Greška", "Molimo odaberite kategoriju");
+      return;
+    }
+
+    if (!formData.experience) {
+      Alert.alert("Greška", "Molimo odaberite nivo iskustva");
+      return;
+    }
+
+    if (!formData.description.trim()) {
+      Alert.alert("Greška", "Molimo unesite opis usluga");
+      return;
+    }
+
+    if (!formData.hourlyRate.trim()) {
+      Alert.alert("Greška", "Molimo unesite satnicu");
+      return;
+    }
+
+    if (!formData.availability) {
+      Alert.alert("Greška", "Molimo odaberite dostupnost");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      Alert.alert(
+        "Uspešno",
+        "Vaša prijava je uspešno poslata! Kontaktiraćemo vas u najkraćem roku.",
+        [
+          {
+            text: "OK",
+            onPress: () => navigation.goBack()
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert(
+        "Greška",
+        "Došlo je do neočekivane greške prilikom slanja prijave."
+      );
+      console.error("Submit error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!loaded && !error) {
+    return null;
+  }
 
   return (
-    <SafeAreaView style={tw`flex-1 bg-white`}>
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
-      <ScrollView contentContainerStyle={tw`p-5`}>
-        <Text style={[tw`text-3xl text-center mb-4`, { fontFamily: "Mont-Bold" }]}>
-          Postani Radnik
-        </Text>
-
-        <View style={tw`bg-gray-50 p-4 rounded-2xl shadow-sm mb-5`}>
-          <Text style={[tw`text-sm uppercase mb-2`, { fontFamily: "Mont-Bold" }]}>
-            Opis Profila
-          </Text>
-          <TextInput
-            numberOfLines={5}
-            multiline
-            style={[tw`p-4 bg-white rounded-xl border border-gray-200`, { fontFamily: "Mont-Regular" }]}
-            placeholder="Unesite ime i prezime, kratak opis Vašeg iskustva..."
-          />
-        </View>
-
-        <View style={tw`bg-yellow-100 p-4 rounded-xl mb-5`}>
-          <Text style={[tw`text-yellow-800 mb-1`, { fontFamily: "Mont-Medium" }]}>
-            Za verifikaciju je potrebno da postavite slike Vašeg identifikacionog dokumenta ( pasoš, lična karta ili vozačka dozvola ).
-          </Text>
-          <Text style={[tw`text-yellow-800 font-bold`, { fontFamily: "Mont-Bold" }]}>
-            Opcionalno možete dodati i dokument o Vašem poslu.
-          </Text>
-        </View>
-
-        <TouchableOpacity style={tw`py-12 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl items-center justify-center mb-5`}>
-          <Icon name="cloud-upload-outline" size={36} style={tw`text-gray-500 mb-3`} />
-          <Text style={[tw`text-black`, { fontFamily: "Mont-SemiBold" }]}>
-            Izaberite fotografije dokumenata
-          </Text>
-          <Text style={[tw`text-xs text-center text-gray-500 mt-1`, { fontFamily: "Mont-Regular" }]}>
-            Dokumenti će biti pregledani isključivo od strane ovlašćenih lica sistema. Vaši podaci neće biti deljeni trećim licima.
-          </Text>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={tw`px-6 pt-4 pb-4 bg-white border-b border-gray-100 flex-row items-center`}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={tw`mr-4 p-2`}
+        >
+          <Ionicons name="arrow-back" size={24} color="#4ade80" />
         </TouchableOpacity>
-
-        <View style={tw`bg-gray-100 p-4 rounded-2xl mb-5`}>
-          <Text style={[tw`text-base mb-2`, { fontFamily: "Mont-Bold" }]}>
-            Privacy Policy
+        
+        <View style={tw`flex-1`}>
+          <Text style={[tw`text-xl`, { fontFamily: 'Mont-Bold' }]}>
+            Postani radnik
           </Text>
-          <Text style={[tw`text-xs leading-5 text-gray-700`, { fontFamily: "Mont-Regular" }]}>
-            Registracijom kao radnik na platformi TrebaMi, pristajete na obradu i čuvanje Vaših ličnih podataka isključivo u svrhe verifikacije identiteta, komunikacije i ponude usluga preko sistema. Vaši podaci neće biti dostupni javnosti niti prodavani trećim stranama. U svakom trenutku možete zatražiti brisanje svojih podataka slanjem zahteva na email support@trebami.app. Korišćenjem naše aplikacije potvrđujete da ste pročitali i saglasni sa ovim pravilima privatnosti.
+          <Text style={[tw`text-sm text-gray-600`, { fontFamily: 'Mont-Regular' }]}>
+            Prijavite se da postanete radnik na platformi
           </Text>
         </View>
+      </View>
 
-        <TouchableOpacity style={tw`p-4 bg-blue-600 rounded-xl items-center justify-center shadow-md`}>
-          <Text style={[tw`text-white text-lg`, { fontFamily: "Mont-Bold" }]}>
-            Pošalji Prijavu
-          </Text>
-        </TouchableOpacity>
+      <ScrollView style={tw`flex-1`} showsVerticalScrollIndicator={false}>
+        <View style={tw`px-6 py-6`}>
+          {/* Info Card */}
+                          <View style={tw`bg-green-50 p-4 rounded-xl mb-6 border border-green-200`}>
+            <View style={tw`flex-row items-start`}>
+              <Ionicons name="information-circle" size={24} color="#4ade80" style={tw`mr-3 mt-1`} />
+              <View style={tw`flex-1`}>
+                <Text style={[tw`text-base text-green-800 mb-2`, { fontFamily: 'Mont-SemiBold' }]}>
+                  Kako funkcioniše?
+                </Text>
+                                  <Text style={[tw`text-sm text-green-700`, { fontFamily: 'Mont-Regular' }]}>
+                  Pošaljite prijavu sa vašim podacima i iskustvom. Naš tim će pregledati vašu prijavu i kontaktirati vas u najkraćem roku za dalje korake.
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Form */}
+          <View style={tw`space-y-6`}>
+            {/* Personal Information */}
+            <View>
+              <Text style={[tw`text-lg mb-4`, { fontFamily: 'Mont-SemiBold' }]}>
+                Lični podaci
+              </Text>
+              
+              <View style={tw`space-y-4`}>
+                <View>
+                  <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                    Puno ime *
+                  </Text>
+                  <TextInput
+                    style={[tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`, { fontFamily: 'Mont-Regular' }]}
+                    placeholder="Vaše puno ime"
+                    value={formData.fullName}
+                    onChangeText={(value) => handleInputChange('fullName', value)}
+                    editable={!isSubmitting}
+                  />
+                </View>
+
+                <View>
+                  <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                    Email *
+                  </Text>
+                  <TextInput
+                    style={[tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`, { fontFamily: 'Mont-Regular' }]}
+                    placeholder="Vaš email"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={formData.email}
+                    onChangeText={(value) => handleInputChange('email', value)}
+                    editable={!isSubmitting}
+                  />
+                </View>
+
+                <View>
+                  <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                    Broj telefona *
+                  </Text>
+                  <TextInput
+                    style={[tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`, { fontFamily: 'Mont-Regular' }]}
+                    placeholder="+381 60 123 4567"
+                    keyboardType="phone-pad"
+                    value={formData.phone}
+                    onChangeText={(value) => handleInputChange('phone', value)}
+                    editable={!isSubmitting}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Professional Information */}
+            <View>
+              <Text style={[tw`text-lg mb-4`, { fontFamily: 'Mont-SemiBold' }]}>
+                Profesionalni podaci
+              </Text>
+              
+              <View style={tw`space-y-4`}>
+                <View>
+                  <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                    Kategorija usluga *
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {categories.map((category) => (
+                      <TouchableOpacity
+                        key={category}
+                        style={[
+                          tw`px-4 py-3 rounded-full mr-3`,
+                          formData.category === category ? tw`bg-green-500` : tw`bg-gray-100`
+                        ]}
+                        onPress={() => handleInputChange('category', category)}
+                        disabled={isSubmitting}
+                      >
+                        <Text style={[
+                          tw`text-sm`,
+                          formData.category === category ? tw`text-white` : tw`text-gray-700`,
+                          { fontFamily: 'Mont-Medium' }
+                        ]}>
+                          {category}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <View>
+                  <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                    Nivo iskustva *
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {experienceLevels.map((level) => (
+                      <TouchableOpacity
+                        key={level}
+                        style={[
+                          tw`px-4 py-3 rounded-full mr-3`,
+                          formData.experience === level ? tw`bg-green-500` : tw`bg-gray-100`
+                        ]}
+                        onPress={() => handleInputChange('experience', level)}
+                        disabled={isSubmitting}
+                      >
+                        <Text style={[
+                          tw`text-sm`,
+                          formData.experience === level ? tw`text-white` : tw`text-gray-700`,
+                          { fontFamily: 'Mont-Medium' }
+                        ]}>
+                          {level}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <View>
+                  <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                    Opis usluga *
+                  </Text>
+                  <TextInput
+                    style={[tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`, { fontFamily: 'Mont-Regular' }]}
+                    placeholder="Opisite detaljno koje usluge pružate..."
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    value={formData.description}
+                    onChangeText={(value) => handleInputChange('description', value)}
+                    editable={!isSubmitting}
+                  />
+                </View>
+
+                <View>
+                  <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                    Satnica (RSD) *
+                  </Text>
+                  <TextInput
+                    style={[tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`, { fontFamily: 'Mont-Regular' }]}
+                    placeholder="500"
+                    keyboardType="numeric"
+                    value={formData.hourlyRate}
+                    onChangeText={(value) => handleInputChange('hourlyRate', value)}
+                    editable={!isSubmitting}
+                  />
+                </View>
+
+                <View style={[ tw`mb-3` ]}>
+                  <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                    Dostupnost *
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {availabilityOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option}
+                        style={[
+                          tw`px-4 py-3 rounded-full mr-3`,
+                          formData.availability === option ? tw`bg-green-500` : tw`bg-gray-100`
+                        ]}
+                        onPress={() => handleInputChange('availability', option)}
+                        disabled={isSubmitting}
+                      >
+                        <Text style={[
+                          tw`text-sm`,
+                          formData.availability === option ? tw`text-white` : tw`text-gray-700`,
+                          { fontFamily: 'Mont-Medium' }
+                        ]}>
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+            </View>
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              style={[
+                tw`w-full p-4 rounded-lg items-center`,
+                isSubmitting ? tw`bg-green-300` : tw`bg-green-500`,
+              ]}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text
+                  style={[
+                    tw`text-white text-lg`,
+                    { fontFamily: "Mont-SemiBold" },
+                  ]}
+                >
+                  Pošaljite prijavu
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Note */}
+            <Text style={[tw`text-sm text-gray-500 text-center mt-3`, { fontFamily: 'Mont-Regular' }]}>
+              * Obavezna polja
+            </Text>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+});
 
 export default BecomeWorker;

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Base URL for your API endpoints
-const API_URL = 'https://backend.davidtesla.online';
+const API_URL = 'https://trebami.betcoresolutions.com';
 
 // Authentication service for handling JWT tokens and auth requests
 class AuthService {
@@ -40,7 +40,24 @@ class AuthService {
   // Check if user is authenticated
   static async isAuthenticated() {
     const token = await this.getToken();
-    return !!token;
+    if (!token) {
+      return false;
+    }
+    
+    // Optional: Validate token by making a test request
+    try {
+      const response = await fetch(`${API_URL}/api/users/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Token validation error:', error);
+      return false;
+    }
   }
 
   static async getUserData() {
@@ -54,7 +71,7 @@ class AuthService {
 
   static async login(email, password) {
     try {
-      const response = await fetch(`${API_URL}/api/user/login`, {
+      const response = await fetch(`${API_URL}/api/users/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -68,18 +85,18 @@ class AuthService {
 
       const data = await response.json();
 
-      if (data.token) {
+      if (response.ok && data.success && data.data && data.data.token) {
         // Store the JWT token
-        await this.setToken(data.token);
+        await this.setToken(data.data.token);
         
         // Also store user data if available
-        if (data.user) {
-          await AsyncStorage.setItem('userData', JSON.stringify(data.user));
+        if (data.data.user) {
+          await AsyncStorage.setItem('userData', JSON.stringify(data.data.user));
         }
         
         return {
           success: true,
-          data: data,
+          data: data.data,
         };
       } else {
         return {
@@ -99,8 +116,9 @@ class AuthService {
   // Logout user by removing JWT token
   static async logout() {
     try {
-      // You might want to call a logout endpoint on your server as well
+      // Remove both token and user data
       await this.removeToken();
+      await AsyncStorage.removeItem('userData');
       return {
         success: true,
       };
@@ -116,10 +134,51 @@ class AuthService {
   // Get auth headers for authenticated requests
   static async getAuthHeaders() {
     const token = await this.getToken();
+    if (!token) {
+      console.error('No token found in storage');
+      return {
+        'Content-Type': 'application/json',
+      };
+    }
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     };
+  }
+
+  // Register new user
+  static async register(userData) {
+    try {
+      const response = await fetch(`${API_URL}/api/users/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return {
+          success: true,
+          data: data,
+          message: data.message || 'Registration successful',
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Registration failed',
+        };
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      return {
+        success: false,
+        message: 'Network or server error',
+      };
+    }
   }
 
   // Make authenticated API requests

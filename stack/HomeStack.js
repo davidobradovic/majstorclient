@@ -1,20 +1,23 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React from 'react'
-import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import WorkerScreen from '../screens/client/WokerScreen';
+import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
+import SearchScreen from '../screens/SearchScreen';
+import WokerScreen from '../screens/client/WokerScreen';
 
 const Stack = createNativeStackNavigator();
 
 const HomeStack = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name='HomeScreen' component={HomeScreen} />
-        <Stack.Screen name='WorkerDetails' component={WorkerScreen} />
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="Search" component={SearchScreen} />
+      <Stack.Screen name="Worker" component={WokerScreen} />
     </Stack.Navigator>
-  )
-}
+  );
+};
 
-export default HomeStack
-
-const styles = StyleSheet.create({})
+export default HomeStack;

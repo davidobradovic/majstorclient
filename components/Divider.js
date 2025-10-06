@@ -1,12 +1,34 @@
 
-import { View } from 'react-native';
-import tw from 'twrnc'
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
 
-export default function Divider() {
-
+const Divider = ({ 
+  height = 1, 
+  color = '#E5E7EB', 
+  marginVertical = 20,
+  marginHorizontal = 0,
+  style 
+}) => {
   return (
-    <View style={[ tw`w-full h-2 bg-gray-200 my-6` ]}>
-
-    </View>
+    <View 
+      style={[
+        styles.divider, 
+        { 
+          height, 
+          backgroundColor: color, 
+          marginVertical, 
+          marginHorizontal 
+        },
+        style
+      ]} 
+    />
   );
-}
+};
+
+const styles = StyleSheet.create({
+  divider: {
+    width: '100%',
+  },
+});
+
+export default Divider;

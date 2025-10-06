@@ -89,118 +89,140 @@ const Login = () => {
   if (!loaded) {
     return (
       <SafeAreaView style={tw`flex-1 items-center justify-center`}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#4ade80" />
       </SafeAreaView>
     );
   }
 
   return (
-    <View style={tw`flex-1`}>
+    <View style={tw`flex-1 bg-white`}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={tw`flex-1 flex bg-gray-400 justify-end`}
+        style={tw`flex-1 flex bg-gradient-to-b from-green-50 via-white to-green-50 justify-end`}
       >
-        <Image source={require('../../assets/authbanner.png')} style={[ tw`h-2/3 object-cover absolute z-[1] right-[-50%] top-0` ]} />
-        
-        <View style={[ tw`w-[200%] aspect-square bg-gray-100 rounded-full absolute z-[2] bottom-[-35%] left-[-50%]` ]}></View>
-        <View style={tw`relative z-10 bg-gray-100 px-6 justify-center items-center pb-10`}>
-          <Text style={[tw`text-2xl text-left w-full mb-2`, { fontFamily: "Mont-Bold" }]}>
-            TrebaMi
-          </Text>
-          <Text
-            style={[
-              tw`text-left w-full mb-8 text-gray-600`,
-              { fontFamily: "Mont-Regular" },
-            ]}
-          >
-            Prijavite se na TrebaMi i nadjite uslugu na vreme
-          </Text>
+        <View style={tw`relative z-10 bg-white px-8 justify-center items-center pb-16`}>
 
-          <View style={tw`w-full mb-6`}>
-            <Text
-              style={[tw`mb-2 text-gray-700`, { fontFamily: "Mont-Medium" }]}
-            >
-              Email
+          {/* Header */}
+          <View style={tw`w-full mb-10`}>
+            <Text style={[tw`text-4xl text-gray-900 mb-3 text-center`, { fontFamily: "Mont-Bold" }]}>
+              Dobrodošli nazad
             </Text>
-            <TextInput
-              style={[
-                tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`,
-                { fontFamily: "Mont-Regular" },
-              ]}
-              placeholder="Vaš email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={email}
-              onChangeText={setEmail}
-              editable={!isSubmitting}
-            />
+            <Text style={[tw`text-lg text-gray-600 text-center leading-relaxed`, { fontFamily: "Mont-Regular" }]}>
+              Prijavite se na TrebaMi i nastavite sa vašim projektima
+            </Text>
           </View>
 
-          <View style={tw`w-full mb-4`}>
-            <Text
-              style={[tw`mb-2 text-gray-700`, { fontFamily: "Mont-Medium" }]}
-            >
-              Lozinka
-            </Text>
-            <TextInput
-              style={[
-                tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`,
-                { fontFamily: "Mont-Regular" },
-              ]}
-              placeholder="Vaša lozinka"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              editable={!isSubmitting}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[
-              tw`w-full p-4 rounded-lg items-center`,
-              isSubmitting ? tw`bg-blue-300` : tw`bg-blue-500`,
-            ]}
-            onPress={handleLogin}
-            disabled={isSubmitting || authLoading}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text
-                style={[
-                  tw`text-white text-lg`,
-                  { fontFamily: "Mont-SemiBold" },
-                ]}
-              >
-                Prijavi se
+          {/* Form */}
+          <View style={tw`w-full space-y-6`}>
+            {/* Email Input */}
+            <View style={tw`space-y-3`}>
+              <Text style={[tw`text-base text-gray-700 font-semibold`, { fontFamily: "Mont-SemiBold" }]}>
+                Email adresa
               </Text>
-            )}
-          </TouchableOpacity>
+              <View style={tw`bg-gray-50 rounded-2xl border-2 border-gray-100 px-5 py-4 shadow-sm`}>
+                <TextInput
+                  style={[tw`text-base text-gray-900`, { fontFamily: "Mont-Regular" }]}
+                  placeholder="Unesite email adresu"
+                  placeholderTextColor="#9CA3AF"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isSubmitting}
+                />
+              </View>
+            </View>
 
-          <View style={[ tw`flex flex-row items-center justify-center gap-1 mt-4` ]}>
+            {/* Password Input */}
+            <View style={tw`space-y-3`}>
+              <Text style={[tw`text-base text-gray-700 font-semibold`, { fontFamily: "Mont-SemiBold" }]}>
+                Lozinka
+              </Text>
+              <View style={tw`bg-gray-50 rounded-2xl border-2 border-gray-100 px-5 py-4 shadow-sm`}>
+                <TextInput
+                  style={[tw`text-base text-gray-900`, { fontFamily: "Mont-Regular" }]}
+                  placeholder="Unesite lozinku"
+                  placeholderTextColor="#9CA3AF"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isSubmitting}
+                />
+              </View>
+            </View>
 
-            {/* <TouchableOpacity
-              onPress={() => navigation.navigate("ForgotPassword")}
-              style={[ tw`w-full flex items-center justify-center bg-gray-200 p-4 rounded-lg` ]}
-              disabled={isSubmitting}
-            >
-              <Text style={[tw`text-blue-500`, { fontFamily: "Mont-Medium" }]}>
+            {/* Forgot Password */}
+            <TouchableOpacity style={tw`self-end`}>
+              <Text style={[tw`text-green-600 text-sm`, { fontFamily: "Mont-Medium" }]}>
                 Zaboravili ste lozinku?
               </Text>
-            </TouchableOpacity> */}
-            <Text style={[tw`text-black ml-1`, { fontFamily: "Mont-Medium" }]}>Nemate nalog?</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Register")}
-              disabled={isSubmitting}
-              style={[ tw`` ]}
-            >
-              <Text
-                style={[tw`text-black ml-1`, { fontFamily: "Mont-Bold" }]}
-              >
-                Registrujte se
-              </Text>
             </TouchableOpacity>
+
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[
+                tw`w-full py-4 rounded-2xl items-center shadow-lg mt-4`,
+                isSubmitting ? tw`bg-green-300` : tw`bg-green-500`,
+              ]}
+              onPress={handleLogin}
+              disabled={isSubmitting || authLoading}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={[tw`text-white text-lg font-semibold`, { fontFamily: "Mont-SemiBold" }]}>
+                  Prijavi se
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={tw`flex-row items-center my-8`}>
+              <View style={tw`flex-1 h-px bg-gray-200`} />
+              {/* <Text style={[tw`px-4 text-gray-400 text-sm`, { fontFamily: "Mont-Medium" }]}>
+                ili
+              </Text> */}
+              <View style={tw`flex-1 h-px bg-gray-200`} />
+            </View>
+
+            {/* Social Login Buttons */}
+            {/* <View style={tw`space-y-4`}>
+              <TouchableOpacity
+                style={tw`w-full py-4 rounded-2xl border-2 border-gray-100 bg-white items-center flex-row justify-center shadow-sm`}
+              >
+                <Text style={tw`text-xl mr-3`}>🔍</Text>
+                <Text style={[tw`text-gray-700 text-base font-semibold`, { fontFamily: "Mont-SemiBold" }]}>
+                  Google
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={tw`w-full py-4 rounded-2xl border-2 border-gray-100 bg-white items-center flex-row justify-center shadow-sm`}
+              >
+                <Text style={tw`text-xl mr-3`}>📘</Text>
+                <Text style={[tw`text-gray-700 text-base font-semibold`, { fontFamily: "Mont-SemiBold" }]}>
+                  Facebook
+                </Text>
+              </TouchableOpacity>
+            </View> */}
+
+            {/* Register Link */}
+            <View style={tw`flex-row justify-center pt-6`}>
+              <Text style={[tw`text-gray-600 text-base`, { fontFamily: "Mont-Regular" }]}>
+                Nemate nalog?{" "}
+              </Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("Register")}
+                disabled={isSubmitting}
+              >
+                <Text style={[tw`text-green-600 text-base font-semibold`, { fontFamily: "Mont-SemiBold" }]}>
+                  Registrujte se
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>

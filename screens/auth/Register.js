@@ -10,54 +10,27 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  ScrollView,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useFonts } from "expo-font";
 import { useNavigation } from "@react-navigation/native";
 import tw from "twrnc";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../context/AuthContext";
-import { MaterialIcons, Ionicons, FontAwesome5 } from "@expo/vector-icons";
-
-import * as ImagePicker from "expo-image-picker";
-import { Switch } from "react-native";
+import AuthService from "../../services/AuthService";
 
 const Register = () => {
-  const [fullName, setFullName] = useState("");
-  const [usedRefferal, setUsedRefferal] = useState(0);
-  const [refferal, setRefferal] = useState(0);
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [images, setImages] = useState([]);
-
-  const [step, setStep] = useState(0);
-
-  // Handle image picking
-  const pickImages = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      // Combine new images with existing ones
-      const newImages = result.assets.map((asset) => asset.uri);
-      setImages([...images, ...newImages]);
-    }
-  };
-
-  // Remove an image
-  const removeImage = (index) => {
-    const updatedImages = [...images];
-    updatedImages.splice(index, 1);
-    setImages(updatedImages);
-  };
-
+  const { login } = useAuth();
   const navigation = useNavigation();
 
   const [loaded, error] = useFonts({
@@ -81,469 +54,284 @@ const Register = () => {
     "Mont-ThinItalic": require("../../assets/fonts/Montserrat-ThinItalic.ttf"),
   });
 
-  // const handleRegister = async () => {
-  //   // Form validation
-  //   if (!email.trim()) {
-  //     Alert.alert('Greška', 'Molimo unesite email adresu');
-  //     return;
-  //   }
-
-  //   if (!password) {
-  //     Alert.alert('Greška', 'Molimo unesite lozinku');
-  //     return;
-  //   }
-
-  //   setIsSubmitting(true);
-
-  //   try {
-  //     // Make API request for login
-  //     const response = await fetch('https://backend.davidtesla.online/api/user/login', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Accept': 'application/json',
-  //       },
-  //       body: JSON.stringify({
-  //         fullName,
-  //         email,
-  //         password,
-  //         usedRefferal,
-  //         refferal,
-  //         images
-  //       }),
-  //     });
-
-  //     const data = await response.json();
-  //     console.log('Register response:', data);
-
-  //     if (data.token) {
-  //       // Save JWT token to AsyncStorage
-  //       await AsyncStorage.setItem('authToken', data.token);
-
-  //       // Optionally save user data as well
-  //       if (data.user) {
-  //         await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-  //       }
-
-  //       console.log('Register successful - navigating to Home');
-  //       // Navigate to the home screen
-  //       navigation.reset({
-  //           index: 0,
-  //           routes: [{ name: 'Authed' }],
-  //       });
-  //     } else {
-  //       // Handle error response
-  //       const errorMessage = data.message || 'Neuspešna prijava. Proverite svoje podatke.';
-  //       Alert.alert('Greška', errorMessage);
-  //     }
-  //   } catch (error) {
-  //     console.error('Register error:', error);
-  //     Alert.alert(
-  //       'Greška pri povezivanju',
-  //       'Došlo je do problema pri povezivanju sa serverom. Proverite svoju internet vezu.'
-  //     );
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   const handleRegister = async () => {
-    if (!email.trim()) {
+    // Form validation
+    if (!formData.firstName.trim()) {
+      Alert.alert("Greška", "Molimo unesite ime");
+      return;
+    }
+
+    if (!formData.lastName.trim()) {
+      Alert.alert("Greška", "Molimo unesite prezime");
+      return;
+    }
+
+    if (!formData.email.trim()) {
       Alert.alert("Greška", "Molimo unesite email adresu");
       return;
     }
 
-    if (!password) {
+    if (!formData.phone.trim()) {
+      Alert.alert("Greška", "Molimo unesite broj telefona");
+      return;
+    }
+
+    if (!formData.password) {
       Alert.alert("Greška", "Molimo unesite lozinku");
       return;
     }
 
-    if (images.length === 0) {
-      Alert.alert("Greška", "Morate dodati sliku");
+    if (formData.password !== formData.confirmPassword) {
+      Alert.alert("Greška", "Lozinke se ne poklapaju");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      Alert.alert("Greška", "Lozinka mora imati najmanje 6 karaktera");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      let formData = new FormData();
-
-      formData.append("fullName", fullName);
-      formData.append("email", email);
-      formData.append("password", password);
-      formData.append("usedRefferal", usedRefferal);
-      formData.append("refferal", refferal);
-      formData.append("role", "user"); // or whatever role you want to pass
-
-      // Only take the first image (API expects single image)
-      const imageUri = images[0];
-      const filename = imageUri.split("/").pop();
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image`;
-
-      formData.append("image", {
-        uri: imageUri,
-        name: filename,
-        type,
+      const result = await AuthService.register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
       });
 
-      const response = await fetch(
-        "https://backend.davidtesla.online/api/user/register",
-        {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "multipart/form-data",
-          },
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-      console.log("Register response:", data);
-
-      if (data.user) {
-        Alert.alert("Uspešno", "Registracija je uspešna!");
-
-        // Navigate or store token if API returns it
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Authed" }],
-        });
+      if (result.success) {
+        Alert.alert(
+          "Uspešno",
+          result.message || "Registracija je uspešna! Možete se prijaviti.",
+          [
+            {
+              text: "OK",
+              onPress: () => navigation.navigate("Login")
+            }
+          ]
+        );
       } else {
-        const errorMessage = data.message || "Neuspešna registracija.";
-        Alert.alert("Greška", errorMessage);
+        Alert.alert(
+          "Greška",
+          result.message || "Došlo je do greške prilikom registracije."
+        );
       }
     } catch (error) {
-      console.error("Register error:", error);
       Alert.alert(
-        "Greška pri povezivanju",
-        "Došlo je do problema pri povezivanju sa serverom. Proverite svoju internet vezu."
+        "Greška",
+        "Došlo je do neočekivane greške prilikom registracije."
       );
+      console.error("Registration error:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const fontStyle = (weight) => ({ fontFamily: `Mont-${weight}` });
-
   // Show loading screen while fonts are loading
   if (!loaded) {
     return (
       <SafeAreaView style={tw`flex-1 items-center justify-center`}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#4ade80" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={tw`flex-1 bg-white`}>
+    <View style={tw`flex-1`}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={tw`flex-1 px-6`}
+        style={tw`flex-1 flex bg-gradient-to-b from-green-50 via-white to-green-50 justify-end`}
       >
-        <View style={tw`flex-1 justify-center items-center`}>
-
-          <Text
-            style={[
-              tw`text-4xl text-left w-full mb-2`,
-              { fontFamily: "Mont-Bold" },
-            ]}
+        <ScrollView 
+          style={tw`relative z-10 bg-white px-8 pb-16`} 
+          contentContainerStyle={tw`justify-center items-center`}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Back Button */}
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={tw`w-12 h-12 bg-gray-100 rounded-2xl items-center justify-center self-start mb-8`}
           >
-            TrebaMi
-          </Text>
-          <Text
-            style={[
-              tw`text-left w-full mb-8 text-gray-600`,
-              { fontFamily: "Mont-Regular" },
-            ]}
-          >
-            Registruj se na TrebaMi i nadjite uslugu na vreme
-          </Text>
+            <Text style={tw`text-2xl text-gray-700`}>←</Text>
+          </TouchableOpacity>
 
-          {step === 0 ? (
-            <View
-              style={tw` w-full flex items-center justify-center -mx-1 mb-6 h-2/4`}
+          {/* Header */}
+          <View style={tw`w-full mb-10`}>
+            <Text style={[tw`text-4xl text-gray-900 mb-3 text-center`, { fontFamily: "Mont-Bold" }]}>
+              Kreirajte nalog
+            </Text>
+            <Text style={[tw`text-lg text-gray-600 text-center leading-relaxed`, { fontFamily: "Mont-Regular" }]}>
+              Registrujte se na TrebaMi i započnite sa korišćenjem usluga
+            </Text>
+          </View>
+
+          <View style={tw`w-full mb-6`}>
+            <Text
+              style={[tw`mb-3 text-gray-700 font-semibold`, { fontFamily: "Mont-SemiBold" }]}
             >
-              {images.length < 1 ? (
-                <TouchableOpacity style={tw`w-2/3 p-1`} onPress={pickImages}>
-                  <View
-                    style={[
-                      tw`aspect-square border-2 border-dashed border-gray-300 items-center justify-center bg-gray-50`,
-                      { borderRadius: 200 },
-                    ]}
-                  >
-                    <MaterialIcons
-                      name="add-photo-alternate"
-                      size={32}
-                      color="#6B7280"
-                    />
-                    <Text
-                      style={[
-                        tw`text-xs text-gray-500 mt-2`,
-                        fontStyle("Medium"),
-                      ]}
-                    >
-                      Izaberi profilnu sliku
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ) : (
-                images.map((image, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      tw`w-full p-1 overflow-hidden flex items-center justify-center`,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        tw`w-2/3 aspect-square items-center justify-center bg-gray-50`,
-                        { borderRadius: 200 },
-                      ]}
-                    >
-                      <Image
-                        source={{ uri: image }}
-                        style={[tw`w-full h-full`, { borderRadius: 200 }]}
-                        resizeMode="cover"
-                      />
-                      <TouchableOpacity
-                        style={tw`absolute top-1 right-1 bg-black bg-opacity-50 rounded-full p-1`}
-                        onPress={() => removeImage(index)}
-                      >
-                        <Ionicons name="close" size={16} color="#ffffff" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))
-              )}
+              Ime
+            </Text>
+            <View style={tw`bg-gray-50 rounded-2xl border-2 border-gray-100 px-5 py-4 shadow-sm`}>
+              <TextInput
+                style={[tw`text-base text-gray-900`, { fontFamily: "Mont-Regular" }]}
+                placeholder="Unesite vaše ime"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="words"
+                autoCorrect={false}
+                value={formData.firstName}
+                onChangeText={(value) => handleInputChange('firstName', value)}
+                editable={!isSubmitting}
+              />
             </View>
-          ) : step === 1 ? (
-            <>
-              <View style={tw`w-full mb-6`}>
-                <Text
-                  style={[
-                    tw`mb-2 text-gray-700`,
-                    { fontFamily: "Mont-Medium" },
-                  ]}
-                >
-                  Ime i Prezime
-                </Text>
-                <TextInput
-                  style={[
-                    tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`,
-                    { fontFamily: "Mont-Regular" },
-                  ]}
-                  placeholder="Vaše ime i prezime"
-                  keyboardType="default"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={fullName}
-                  onChangeText={setFullName}
-                  editable={!isSubmitting}
-                />
-              </View>
+          </View>
 
-              <View style={tw`w-full mb-6`}>
-                <Text
-                  style={[
-                    tw`mb-2 text-gray-700`,
-                    { fontFamily: "Mont-Medium" },
-                  ]}
-                >
-                  Email
-                </Text>
-                <TextInput
-                  style={[
-                    tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`,
-                    { fontFamily: "Mont-Regular" },
-                  ]}
-                  placeholder="Vaš email"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={email}
-                  onChangeText={setEmail}
-                  editable={!isSubmitting}
-                />
-              </View>
-
-              <View style={tw`w-full mb-8`}>
-                <Text
-                  style={[
-                    tw`mb-2 text-gray-700`,
-                    { fontFamily: "Mont-Medium" },
-                  ]}
-                >
-                  Lozinka
-                </Text>
-                <TextInput
-                  style={[
-                    tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`,
-                    { fontFamily: "Mont-Regular" },
-                  ]}
-                  placeholder="Vaša lozinka"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                  editable={!isSubmitting}
-                />
-              </View>
-            </>
-          ) : step === 2 ? (
-            <>
-              <View style={tw`w-full mb-6`}>
-                <Text
-                  style={[
-                    tw`mb-2 text-gray-700`,
-                    { fontFamily: "Mont-Medium" },
-                  ]}
-                >
-                  Pozivni kod
-                </Text>
-                <TextInput
-                  style={[
-                    tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`,
-                    { fontFamily: "Mont-Regular" },
-                  ]}
-                  placeholder="Vaš pozivni kod"
-                  keyboardType="number-pad"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={refferal}
-                  onChangeText={setRefferal}
-                  editable={!isSubmitting}
-                />
-              </View>
-            </>
-          ) : null}
-
-          {/* Dugmad */}
-          {step === 0 ? (
-            <View style={[tw`flex flex-row items-center gap-2`]}>
-              <TouchableOpacity
-                style={[tw`w-1/2 p-4 rounded-lg items-center bg-gray-100`]}
-                onPress={() => navigation.goBack()}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="black" />
-                ) : (
-                  <Text
-                    style={[
-                      tw`text-black text-lg`,
-                      { fontFamily: "Mont-SemiBold" },
-                    ]}
-                  >
-                    Otkaži
-                  </Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[tw`w-1/2 p-4 rounded-lg items-center bg-blue-500`]}
-                onPress={() => setStep(step + 1)}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text
-                    style={[
-                      tw`text-white text-lg`,
-                      { fontFamily: "Mont-SemiBold" },
-                    ]}
-                  >
-                    Sledeći korak
-                  </Text>
-                )}
-              </TouchableOpacity>
+          <View style={tw`w-full mb-6`}>
+            <Text
+              style={[tw`mb-3 text-gray-700 font-semibold`, { fontFamily: "Mont-SemiBold" }]}
+            >
+              Prezime
+            </Text>
+            <View style={tw`bg-gray-50 rounded-2xl border-2 border-gray-100 px-5 py-4 shadow-sm`}>
+              <TextInput
+                style={[tw`text-base text-gray-900`, { fontFamily: "Mont-Regular" }]}
+                placeholder="Unesite vaše prezime"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="words"
+                autoCorrect={false}
+                value={formData.lastName}
+                onChangeText={(value) => handleInputChange('lastName', value)}
+                editable={!isSubmitting}
+              />
             </View>
-          ) : step < 2 ? (
-            <View style={[tw`flex flex-row items-center gap-2`]}>
-              <TouchableOpacity
-                style={[tw`w-1/2 p-4 rounded-lg items-center bg-gray-100`]}
-                onPress={() => setStep(step - 1)}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="black" />
-                ) : (
-                  <Text
-                    style={[
-                      tw`text-black text-base`,
-                      { fontFamily: "Mont-SemiBold" },
-                    ]}
-                  >
-                    Prethodni korak
-                  </Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[tw`w-1/2 p-4 rounded-lg items-center bg-blue-500`]}
-                onPress={() => setStep(step + 1)}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text
-                    style={[
-                      tw`text-white text-base`,
-                      { fontFamily: "Mont-SemiBold" },
-                    ]}
-                  >
-                    Sledeći korak
-                  </Text>
-                )}
-              </TouchableOpacity>
+          </View>
+
+          <View style={tw`w-full mb-6`}>
+            <Text
+              style={[tw`mb-3 text-gray-700 font-semibold`, { fontFamily: "Mont-SemiBold" }]}
+            >
+              Email
+            </Text>
+            <View style={tw`bg-gray-50 rounded-2xl border-2 border-gray-100 px-5 py-4 shadow-sm`}>
+              <TextInput
+                style={[tw`text-base text-gray-900`, { fontFamily: "Mont-Regular" }]}
+                placeholder="Unesite email adresu"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={formData.email}
+                onChangeText={(value) => handleInputChange('email', value)}
+                editable={!isSubmitting}
+              />
             </View>
-          ) : (
-            <View style={[tw`flex flex-row items-center gap-2`]}>
-              <TouchableOpacity
-                style={[tw`w-1/2 p-4 rounded-lg items-center bg-gray-100`]}
-                onPress={() => setStep(step - 1)}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="black" />
-                ) : (
-                  <Text
-                    style={[
-                      tw`text-black text-base`,
-                      { fontFamily: "Mont-SemiBold" },
-                    ]}
-                  >
-                    Prethodni korak
-                  </Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
+          </View>
+
+          <View style={tw`w-full mb-6`}>
+            <Text
+              style={[tw`mb-3 text-gray-700 font-semibold`, { fontFamily: "Mont-SemiBold" }]}
+            >
+              Broj telefona
+            </Text>
+            <View style={tw`bg-gray-50 rounded-2xl border-2 border-gray-100 px-5 py-4 shadow-sm`}>
+              <TextInput
+                style={[tw`text-base text-gray-900`, { fontFamily: "Mont-Regular" }]}
+                placeholder="+381 60 123 4567"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="phone-pad"
+                value={formData.phone}
+                onChangeText={(value) => handleInputChange('phone', value)}
+                editable={!isSubmitting}
+              />
+            </View>
+          </View>
+
+          <View style={tw`w-full mb-6`}>
+            <Text
+              style={[tw`mb-3 text-gray-700 font-semibold`, { fontFamily: "Mont-SemiBold" }]}
+            >
+              Lozinka
+            </Text>
+            <View style={tw`bg-gray-50 rounded-2xl border-2 border-gray-100 px-5 py-4 shadow-sm`}>
+              <TextInput
+                style={[tw`text-base text-gray-900`, { fontFamily: "Mont-Regular" }]}
+                placeholder="Unesite lozinku"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry
+                value={formData.password}
+                onChangeText={(value) => handleInputChange('password', value)}
+                editable={!isSubmitting}
+              />
+            </View>
+          </View>
+
+          <View style={tw`w-full mb-8`}>
+            <Text
+              style={[tw`mb-3 text-gray-700 font-semibold`, { fontFamily: "Mont-SemiBold" }]}
+            >
+              Potvrdite lozinku
+            </Text>
+            <View style={tw`bg-gray-50 rounded-2xl border-2 border-gray-100 px-5 py-4 shadow-sm`}>
+              <TextInput
+                style={[tw`text-base text-gray-900`, { fontFamily: "Mont-Regular" }]}
+                placeholder="Ponovite lozinku"
+                placeholderTextColor="#9CA3AF"
+                secureTextEntry
+                value={formData.confirmPassword}
+                onChangeText={(value) => handleInputChange('confirmPassword', value)}
+                editable={!isSubmitting}
+              />
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity
+            style={[
+              tw`w-full py-5 rounded-2xl items-center shadow-lg`,
+              isSubmitting ? tw`bg-green-300` : tw`bg-green-500`,
+            ]}
+            onPress={handleRegister}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="white" size="large" />
+            ) : (
+              <Text
                 style={[
-                  tw`w-1/2 p-4 rounded-lg items-center`,
-                  isSubmitting ? tw`bg-blue-300` : tw`bg-blue-500`,
+                  tw`text-white text-xl font-semibold`,
+                  { fontFamily: "Mont-SemiBold" },
                 ]}
-                onPress={handleRegister}
-                disabled={isSubmitting}
               >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text
-                    style={[
-                      tw`text-white text-base`,
-                      { fontFamily: "Mont-SemiBold" },
-                    ]}
-                  >
-                    Registruj se
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
+                Registrujte se
+              </Text>
+            )}
+          </TouchableOpacity>
 
-        </View>
+          {/* Login Link */}
+          <View style={tw`flex-row justify-center pt-8`}>
+            <Text style={[tw`text-gray-600 text-base`, { fontFamily: "Mont-Regular" }]}>
+              Već imate nalog?{" "}
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Login")}
+              disabled={isSubmitting}
+            >
+              <Text
+                style={[tw`text-green-600 text-base font-semibold`, { fontFamily: "Mont-SemiBold" }]}
+              >
+                Prijavite se
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 

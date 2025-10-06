@@ -1,180 +1,502 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  StyleSheet,
+  ScrollView,
   TouchableOpacity,
   SafeAreaView,
-  ScrollView,
+  Platform,
   TextInput,
+  Alert,
   Modal,
-} from "react-native";
-import Icon from "react-native-vector-icons/Ionicons";
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import Feather from "react-native-vector-icons/Feather";
-import { AntDesign, MaterialIcons } from "@expo/vector-icons";
-import MapView, { Marker } from "react-native-maps";
-import tw from "twrnc";
-import { useNavigation } from "@react-navigation/native";
-import { useFonts } from "expo-font";
-
-const addressesData = [
-  { id: 1, name: "Kalemegdan, Beograd", lat: "44.8233", long: "20.4500" },
-  { id: 2, name: "Hram Svetog Save", lat: "44.7980", long: "20.4689" },
-  { id: 3, name: "Muzej Nikole Tesle", lat: "44.8021", long: "20.4577" },
-  { id: 4, name: "Skadarlija", lat: "44.8177", long: "20.4689" },
-  { id: 5, name: "Ada Ciganlija", lat: "44.7866", long: "20.4489" },
-];
+} from 'react-native';
+import { useFonts } from 'expo-font';
+import { useAuth } from '../../context/AuthContext';
+import tw from 'twrnc';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const Addresses = () => {
-  const [addresses, setAddresses] = useState(addressesData);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [newAddress, setNewAddress] = useState({ name: "", lat: "", long: "" });
-
-  const [loaded] = useFonts({
-    "Mont-Bold": require("../../assets/fonts/Montserrat-Bold.ttf"),
-    "Mont-SemiBold": require("../../assets/fonts/Montserrat-SemiBold.ttf"),
+  const { user } = useAuth();
+  const navigation = useNavigation();
+  const [addresses, setAddresses] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    phone: '',
+    isDefault: false
   });
 
-  const navigation = useNavigation();
-  if (!loaded) return null;
+  const [loaded, error] = useFonts({
+    "Mont-Black": require("../../assets/fonts/Montserrat-Black.ttf"),
+    "Mont-BlackItalic": require("../../assets/fonts/Montserrat-BlackItalic.ttf"),
+    "Mont-Bold": require("../../assets/fonts/Montserrat-Bold.ttf"),
+    "Mont-BoldItalic": require("../../assets/fonts/Montserrat-BoldItalic.ttf"),
+    "Mont-ExtraBold": require("../../assets/fonts/Montserrat-ExtraBold.ttf"),
+    "Mont-ExtraBoldItalic": require("../../assets/fonts/Montserrat-ExtraBoldItalic.ttf"),
+    "Mont-ExtraLight": require("../../assets/fonts/Montserrat-ExtraLight.ttf"),
+    "Mont-ExtraLightItalic": require("../../assets/fonts/Montserrat-ExtraLightItalic.ttf"),
+    "Mont-Italic": require("../../assets/fonts/Montserrat-Italic.ttf"),
+    "Mont-Light": require("../../assets/fonts/Montserrat-Light.ttf"),
+    "Mont-LightItalic": require("../../assets/fonts/Montserrat-LightItalic.ttf"),
+    "Mont-Medium": require("../../assets/fonts/Montserrat-Medium.ttf"),
+    "Mont-MediumItalic": require("../../assets/fonts/Montserrat-MediumItalic.ttf"),
+    "Mont-Regular": require("../../assets/fonts/Montserrat-Regular.ttf"),
+    "Mont-SemiBold": require("../../assets/fonts/Montserrat-SemiBold.ttf"),
+    "Mont-SemiBoldItalic": require("../../assets/fonts/Montserrat-SemiBoldItalic.ttf"),
+    "Mont-Thin": require("../../assets/fonts/Montserrat-Thin.ttf"),
+    "Mont-ThinItalic": require("../../assets/fonts/Montserrat-ThinItalic.ttf"),
+  });
 
-  const handleAddAddress = () => {
-    if (newAddress.name && newAddress.lat && newAddress.long) {
-      const id = addresses.length + 1;
-      setAddresses([...addresses, { id, ...newAddress }]);
-      setModalVisible(false);
-      setNewAddress({ name: "", lat: "", long: "" });
-    } else {
-      alert("Molimo popunite sva polja");
+  const cities = [
+    'Novi Sad', 'Beograd', 'Niš', 'Kragujevac', 'Subotica', 'Zrenjanin', 
+    'Pančevo', 'Čačak', 'Novi Pazar', 'Kraljevo', 'Leskovac', 'Užice'
+  ];
+
+  // Fake data for addresses
+  const fakeAddresses = [
+    {
+      id: 1,
+      name: 'Kuća',
+      address: 'Bulevar oslobođenja 123',
+      city: 'Novi Sad',
+      postalCode: '21000',
+      phone: '+381 60 123 4567',
+      isDefault: true
+    },
+    {
+      id: 2,
+      name: 'Posao',
+      address: 'Zmaj Jovina 45',
+      city: 'Novi Sad',
+      postalCode: '21000',
+      phone: '+381 60 987 6543',
+      isDefault: false
+    },
+    {
+      id: 3,
+      name: 'Vikendica',
+      address: 'Futoška 78',
+      city: 'Novi Sad',
+      postalCode: '21000',
+      phone: '+381 60 555 1234',
+      isDefault: false
     }
+  ];
+
+  useEffect(() => {
+    setAddresses(fakeAddresses);
+  }, []);
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      address: '',
+      city: '',
+      postalCode: '',
+      phone: '',
+      isDefault: false
+    });
+    setEditingAddress(null);
+  };
+
+  const handleAddAddress = () => {
+    setShowAddModal(true);
+    resetForm();
+  };
+
+  const handleEditAddress = (address) => {
+    setEditingAddress(address);
+    setFormData({
+      name: address.name,
+      address: address.address,
+      city: address.city,
+      postalCode: address.postalCode,
+      phone: address.phone,
+      isDefault: address.isDefault
+    });
+    setShowAddModal(true);
+  };
+
+  const handleDeleteAddress = (addressId) => {
+    Alert.alert(
+      'Brisanje adrese',
+      'Da li ste sigurni da želite da obrišete ovu adresu?',
+      [
+        { text: 'Otkaži', style: 'cancel' },
+        { 
+          text: 'Obriši', 
+          style: 'destructive',
+          onPress: () => {
+            setAddresses(prev => prev.filter(addr => addr.id !== addressId));
+            Alert.alert('Uspešno', 'Adresa je obrisana');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleSetDefault = (addressId) => {
+    setAddresses(prev => 
+      prev.map(addr => ({
+        ...addr,
+        isDefault: addr.id === addressId
+      }))
+    );
+    Alert.alert('Uspešno', 'Podrazumevana adresa je postavljena');
+  };
+
+  const handleSubmit = () => {
+    // Form validation
+    if (!formData.name.trim()) {
+      Alert.alert("Greška", "Molimo unesite naziv adrese");
+      return;
+    }
+
+    if (!formData.address.trim()) {
+      Alert.alert("Greška", "Molimo unesite adresu");
+      return;
+    }
+
+    if (!formData.city) {
+      Alert.alert("Greška", "Molimo odaberite grad");
+      return;
+    }
+
+    if (!formData.phone.trim()) {
+      Alert.alert("Greška", "Molimo unesite broj telefona");
+      return;
+    }
+
+    if (editingAddress) {
+      // Update existing address
+      setAddresses(prev => 
+        prev.map(addr => 
+          addr.id === editingAddress.id 
+            ? { ...formData, id: addr.id }
+            : { ...addr, isDefault: formData.isDefault ? false : addr.isDefault }
+        )
+      );
+      Alert.alert('Uspešno', 'Adresa je ažurirana');
+    } else {
+      // Add new address
+      const newAddress = {
+        ...formData,
+        id: Date.now()
+      };
+      
+      if (formData.isDefault) {
+        setAddresses(prev => 
+          prev.map(addr => ({ ...addr, isDefault: false })).concat(newAddress)
+        );
+      } else {
+        setAddresses(prev => [...prev, newAddress]);
+      }
+      
+      Alert.alert('Uspešno', 'Nova adresa je dodana');
+    }
+
+    setShowAddModal(false);
+    resetForm();
+  };
+
+  const closeModal = () => {
+    setShowAddModal(false);
+    resetForm();
+  };
+
+  if (!loaded && !error) {
+    return null;
+  }
+
   return (
-    <SafeAreaView style={tw`flex-1 bg-white`}>
-      <ScrollView contentContainerStyle={tw`p-5`}>
-        {/* Header */}
-        <View style={tw`flex flex-row items-center justify-between mb-4`}>
-          <Text style={[tw`text-3xl`, { fontFamily: "Mont-Bold" }]}>Moje Lokacije</Text>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={tw`px-6 pt-4 pb-4 bg-white border-b border-gray-100 flex-row items-center`}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={tw`mr-4 p-2`}
+        >
+          <Ionicons name="arrow-back" size={24} color="#4ade80" />
+        </TouchableOpacity>
+        
+        <View style={tw`flex-1`}>
+          <Text style={[tw`text-xl`, { fontFamily: 'Mont-Bold' }]}>
+            Moje adrese
+          </Text>
+          <Text style={[tw`text-sm text-gray-600`, { fontFamily: 'Mont-Regular' }]}>
+            Upravljajte sačuvanim adresama
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView style={tw`flex-1`} showsVerticalScrollIndicator={false}>
+        <View style={tw`px-6 py-6`}>
+          {/* Add Address Button */}
           <TouchableOpacity
-            style={tw`p-3 rounded-full bg-blue-500`}
-            onPress={() => setModalVisible(true)}
+                            style={tw`w-full bg-green-500 p-4 rounded-lg items-center mb-6`}
+            onPress={handleAddAddress}
           >
-            <AntDesign name="plus" size={24} color="white" />
+            <View style={tw`flex-row items-center`}>
+              <Ionicons name="add" size={24} color="white" style={tw`mr-2`} />
+              <Text style={[tw`text-white text-lg`, { fontFamily: 'Mont-SemiBold' }]}>
+                Dodaj novu adresu
+              </Text>
+            </View>
           </TouchableOpacity>
-        </View>
 
-        {/* Map */}
-        <View style={tw`h-80 rounded-lg overflow-hidden`}>
-          <MapView 
-            style={tw`flex-1`}
-            initialRegion={{
-              latitude: 44.7866,
-              longitude: 20.4489,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
-          >
-            {addresses.map((address) => (
-              <Marker
-                key={address.id}
-                coordinate={{
-                  latitude: parseFloat(address.lat),
-                  longitude: parseFloat(address.long),
-                }}
-                title={address.name}
-                description="Sačuvana Lokacija"
-              >
-                <View style={tw`bg-blue-500 p-2 rounded-full flex-row items-center`}>
-                  <View style={tw`bg-white p-2 rounded-full`}>
-                    <Icon name="location-outline" size={16} color="#3B82F6" />
+          {/* Addresses List */}
+          {addresses.length === 0 ? (
+            <View style={tw`items-center justify-center py-20`}>
+              <Ionicons name="location-outline" size={64} color="#9CA3AF" />
+              <Text style={[tw`text-lg text-gray-500 mt-4`, { fontFamily: 'Mont-Medium' }]}>
+                Nemate sačuvanih adresa
+              </Text>
+              <Text style={[tw`text-gray-400 text-center mt-2 px-8`, { fontFamily: 'Mont-Regular' }]}>
+                Dodajte svoju prvu adresu da biste mogli brzo da rezervišete usluge
+              </Text>
+            </View>
+          ) : (
+            <View style={tw`space-y-4`}>
+              {addresses.map((address) => (
+                <View key={address.id} style={tw`bg-white rounded-xl p-4 shadow-sm border border-gray-100`}>
+                  {/* Header */}
+                  <View style={tw`flex-row justify-between items-start mb-3`}>
+                    <View style={tw`flex-1`}>
+                      <View style={tw`flex-row items-center`}>
+                        <Text style={[tw`text-lg`, { fontFamily: 'Mont-SemiBold' }]}>
+                          {address.name}
+                        </Text>
+                        {address.isDefault && (
+                                          <View style={tw`ml-2 bg-green-100 px-2 py-1 rounded-full`}>
+                  <Text style={[tw`text-xs text-green-600`, { fontFamily: 'Mont-Medium' }]}>
+                              Podrazumevano
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    
+                    <View style={tw`flex-row`}>
+                      <TouchableOpacity
+                        style={tw`p-2 mr-2`}
+                        onPress={() => handleEditAddress(address)}
+                      >
+                        <Ionicons name="pencil" size={20} color="#4ade80" />
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={tw`p-2`}
+                        onPress={() => handleDeleteAddress(address.id)}
+                      >
+                        <Ionicons name="trash" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <Text style={tw`text-white text-xs ml-1`}>{address.name}</Text>
-                </View>
-              </Marker>
-            ))}
-          </MapView>
-        </View>
 
-        {/* Address list */}
-        <View style={tw`mt-4 gap-3`}>
-          {addresses.map((address) => (
-            <TouchableOpacity key={address.id} style={tw`p-4 bg-gray-100 rounded-xl`}>
-              <Text style={{ fontFamily: "Mont-SemiBold" }}>{address.name}</Text>
-              <View style={tw`flex-row gap-3 mt-3`}>
-                <TouchableOpacity style={tw`flex-1 p-2 rounded-full bg-blue-500 flex-row justify-center items-center`}>
-                  <MaterialCommunityIcons name="map-marker-circle" size={24} color="white" />
-                </TouchableOpacity>
-                <TouchableOpacity style={tw`flex-1 p-2 rounded-full bg-gray-200 flex-row justify-center items-center`}>
-                  <Feather name="edit-2" size={24} color="black" />
-                </TouchableOpacity>
-                <TouchableOpacity style={tw`flex-1 p-2 rounded-full bg-red-600 flex-row justify-center items-center`}>
-                  <Icon name="trash-bin-outline" size={24} color="white" />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
+                  {/* Address Details */}
+                  <View style={tw`space-y-2 mb-4`}>
+                    <View style={tw`flex-row items-center`}>
+                      <Ionicons name="location-outline" size={16} color="#6B7280" style={tw`mr-2`} />
+                      <Text style={[tw`text-gray-700`, { fontFamily: 'Mont-Regular' }]}>
+                        {address.address}, {address.city} {address.postalCode}
+                      </Text>
+                    </View>
+                    
+                    <View style={tw`flex-row items-center`}>
+                      <Ionicons name="call-outline" size={16} color="#6B7280" style={tw`mr-2`} />
+                      <Text style={[tw`text-gray-700`, { fontFamily: 'Mont-Regular' }]}>
+                        {address.phone}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Actions */}
+                  <View style={tw`flex-row gap-2`}>
+                    {!address.isDefault && (
+                      <TouchableOpacity
+                        style={tw`flex-1 bg-green-500 py-2 rounded-lg items-center`}
+                        onPress={() => handleSetDefault(address.id)}
+                      >
+                        <Text style={[tw`text-white text-xs font-bold`, { fontFamily: 'Mont-Medium' }]}>
+                          Postavi kao podrazumevano
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    
+                    <TouchableOpacity
+                      style={tw`px-4 bg-gray-100 py-2 rounded-lg items-center`}
+                      onPress={() => Alert.alert('Info', 'Navigacija će biti dostupna uskoro')}
+                    >
+                      <Text style={[tw`text-gray-700`, { fontFamily: 'Mont-Medium' }]}>
+                        Navigacija
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
-      {/* Modal */}
+      {/* Add/Edit Address Modal */}
       <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        visible={showAddModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
       >
-        <View style={tw`flex-1 bg-black bg-opacity-50 justify-center items-center`}>
-          <View style={tw`bg-white w-11/12 rounded-xl p-5`}>
-            <Text style={[tw`text-xl mb-4`, { fontFamily: "Mont-Bold" }]}>Dodaj Novu Lokaciju</Text>
-            <TextInput
-              placeholder="Naziv lokacije"
-              style={[tw`border border-gray-300 rounded-lg p-3 mb-3 text-black`, { fontFamily: 'Mont-Bold' }]}
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={newAddress.name}
-              onChangeText={(text) => setNewAddress({ ...newAddress, name: text })}
-            />
-            <View style={[ tw`flex flex-row gap-2 mb-3` ]}>
-                <TextInput
-                placeholder="Unesite adresu"
-                style={[tw`border border-gray-300 rounded-lg p-3 text-black flex-1`, { fontFamily: 'Mont-Bold' }]}
-                placeholderTextColor="rgba(0,0,0,0.5)"
-                value={newAddress.name}
-                onChangeText={(text) => setNewAddress({ ...newAddress, name: text })}
-                />
-                <TouchableOpacity style={[ tw`p-3 rounded-lg bg-gray-100` ]}>
-                    <MaterialIcons name="gps-fixed" size={20} />
-                </TouchableOpacity>
-            </View>
-            <View style={tw`h-40 rounded-lg overflow-hidden mb-3`}>
-                <MapView 
-                  style={tw`flex-1`}
-                  initialRegion={{
-                    latitude: 44.7866,
-                    longitude: 20.4489,
-                    latitudeDelta: 0.0922,
-                    longitudeDelta: 0.0421,
-                  }}
-                ></MapView>
-            </View>
-            <View style={tw`flex-row justify-end gap-3`}>
-              <TouchableOpacity
-                style={tw`px-4 py-2 bg-gray-200 rounded-lg`}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={[tw`text-gray-700`, { fontFamily: 'Mont-Bold' }]}>Otkaži</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={tw`px-4 py-2 bg-blue-500 rounded-lg`}
-                onPress={handleAddAddress}
-              >
-                <Text style={[tw`text-white`, { fontFamily: 'Mont-Bold' }]}>Sačuvaj</Text>
-              </TouchableOpacity>
-            </View>
+        <SafeAreaView style={tw`flex-1 bg-white`}>
+          {/* Modal Header */}
+          <View style={tw`px-6 pt-4 pb-4 border-b border-gray-100 flex-row items-center`}>
+            <TouchableOpacity onPress={closeModal} style={tw`mr-4 p-2`}>
+              <Ionicons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+            
+            <Text style={[tw`text-xl`, { fontFamily: 'Mont-Bold' }]}>
+              {editingAddress ? 'Izmeni adresu' : 'Dodaj novu adresu'}
+            </Text>
           </View>
-        </View>
+
+          <ScrollView style={tw`flex-1 px-6 py-6`} showsVerticalScrollIndicator={false}>
+            <View style={tw`space-y-6`}>
+              {/* Address Name */}
+              <View>
+                <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                  Naziv adrese *
+                </Text>
+                <TextInput
+                  style={[tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`, { fontFamily: 'Mont-Regular' }]}
+                  placeholder="Kuća, Posao, Vikendica..."
+                  value={formData.name}
+                  onChangeText={(value) => handleInputChange('name', value)}
+                />
+              </View>
+
+              {/* Street Address */}
+              <View>
+                <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                  Ulica i broj *
+                </Text>
+                <TextInput
+                  style={[tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`, { fontFamily: 'Mont-Regular' }]}
+                  placeholder="Bulevar oslobođenja 123"
+                  value={formData.address}
+                  onChangeText={(value) => handleInputChange('address', value)}
+                />
+              </View>
+
+              {/* City */}
+              <View>
+                <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                  Grad *
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {cities.map((city) => (
+                    <TouchableOpacity
+                      key={city}
+                      style={[
+                        tw`px-4 py-3 rounded-full mr-3`,
+                        formData.city === city ? tw`bg-green-500` : tw`bg-gray-100`
+                      ]}
+                      onPress={() => handleInputChange('city', city)}
+                    >
+                      <Text style={[
+                        tw`text-sm`,
+                        formData.city === city ? tw`text-white` : tw`text-gray-700`,
+                        { fontFamily: 'Mont-Medium' }
+                      ]}>
+                        {city}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              {/* Postal Code */}
+              <View>
+                <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                  Poštanski broj
+                </Text>
+                <TextInput
+                  style={[tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`, { fontFamily: 'Mont-Regular' }]}
+                  placeholder="21000"
+                  keyboardType="numeric"
+                  value={formData.postalCode}
+                  onChangeText={(value) => handleInputChange('postalCode', value)}
+                />
+              </View>
+
+              {/* Phone */}
+              <View>
+                <Text style={[tw`text-sm text-gray-700 mb-2`, { fontFamily: 'Mont-Medium' }]}>
+                  Broj telefona *
+                </Text>
+                <TextInput
+                  style={[tw`w-full p-4 bg-gray-100 rounded-lg border border-gray-300`, { fontFamily: 'Mont-Regular' }]}
+                  placeholder="+381 60 123 4567"
+                  keyboardType="phone-pad"
+                  value={formData.phone}
+                  onChangeText={(value) => handleInputChange('phone', value)}
+                />
+              </View>
+
+              {/* Default Address Toggle */}
+              <View style={tw`flex-row items-center justify-between`}>
+                <View style={tw`flex-1`}>
+                  <Text style={[tw`text-base`, { fontFamily: 'Mont-Medium' }]}>
+                    Postavi kao podrazumevanu adresu
+                  </Text>
+                  <Text style={[tw`text-sm text-gray-500`, { fontFamily: 'Mont-Regular' }]}>
+                    Ova adresa će biti automatski odabrana prilikom rezervacije
+                  </Text>
+                </View>
+                
+                <TouchableOpacity
+                  style={[
+                    tw`w-12 h-6 rounded-full p-1`,
+                    formData.isDefault ? tw`bg-green-500` : tw`bg-gray-300`
+                  ]}
+                  onPress={() => handleInputChange('isDefault', !formData.isDefault)}
+                >
+                  <View style={[
+                    tw`w-4 h-4 rounded-full bg-white`,
+                    formData.isDefault ? tw`ml-5` : tw`ml-0`
+                  ]} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                style={tw`w-full bg-green-500 py-4 rounded-lg items-center mt-6`}
+                onPress={handleSubmit}
+              >
+                <Text style={[tw`text-white text-lg`, { fontFamily: 'Mont-SemiBold' }]}>
+                  {editingAddress ? 'Ažuriraj adresu' : 'Dodaj adresu'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+});
 
 export default Addresses;
